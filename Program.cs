@@ -1,6 +1,6 @@
 using ConsoleSharp;
 
-var display = new Display(dimensions: [1920, 1080]);
+var display = new Display(dimensions: new Size(1920, 1080));
 List<Line> lines = [new Line(new TextBlock(text: "Hello World", effect: new TypeWriter(delay: 100))), 
     new Line(new TextBlock(text: "Goodbye World", textColor: new CSColor(0, 255, 0), effect: new TypeWriter(delay: 100)))];
 display.Print(lines);
@@ -13,7 +13,7 @@ namespace ConsoleSharp
 
     public class Display
     {
-        public static int[] DefaultDims { get; set; } = [500, 500];
+        public static Size DefaultDims { get; set; } = new Size(500, 500);
         public Window Window { get; private set; } = new Window();
         readonly Thread UIThread;
 
@@ -37,22 +37,22 @@ namespace ConsoleSharp
 
         public void Print()
         {
-            int[]? pos = null;
+            Point? pos = null;
             if (Window.Labels.Count > 0)
             {
                 var prevField = Window.Labels.Last();
-                pos = [0, prevField.Location.Y + prevField.Height];
+                pos = new Point(0, prevField.Location.Y + prevField.Height);
             }
             AddLabel(pos);
         }
 
-        public Label AddLabel(int[]? pos = null)
+        public Label AddLabel(Point? pos = null)
         {
             var label = new Label();
             label.AutoSize = true;
             if (pos != null)
             {
-                label.Location = new Point(pos[0], pos[1]);
+                label.Location = pos.Value;
             }
             Window.Invoke(() =>
             {
@@ -62,19 +62,11 @@ namespace ConsoleSharp
             return Window.Labels.Last();
         }
 
-        public Display(string name = "New Display", int[]? dimensions = null, int[]? position = null, CSColor? bgColor = null)
+        public Display(string name = "New Display", Size? dimensions = null, Point? position = null, CSColor? bgColor = null)
         {
-            if (dimensions != null && dimensions.Length != 2)
-            {
-                throw new ArgumentException("Invalid display dimensions.");
-            }
-            if (position != null && position.Length != 2)
-            {
-                throw new ArgumentException("Invalid display position.");
-            }
             var formReady = new AutoResetEvent(false);
-            int[] dims = dimensions ?? DefaultDims;
-            int[] pos = position ?? [Screen.PrimaryScreen.Bounds.Width / 2 - dims[0] / 2, Screen.PrimaryScreen.Bounds.Height / 2 - dims[1] / 2];
+            Size dims = dimensions ?? DefaultDims;
+            Point pos = position ?? new Point(Screen.PrimaryScreen.Bounds.Width / 2 - dims.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2 - dims.Height / 2);
             bgColor = bgColor ?? new CSColor();
 
             UIThread = new Thread(() =>
@@ -85,8 +77,8 @@ namespace ConsoleSharp
                 Window.AutoScroll = true;
                 Window.Text = name;
                 Window.BackColor = bgColor.ColorData;
-                Utils.SetDims(Window, dims);
-                Utils.SetPos(Window, pos);
+                Window.Size = dims;
+                Window.Location = pos;
                 Application.Run(Window);
             });
 
@@ -102,11 +94,11 @@ namespace ConsoleSharp
 
         public void PrintText(Display display)
         {
-            int[]? pos = null;
+            Point? pos = null;
             if (display.Window.Labels.Count > 0)
             {
                 var prevField = display.Window.Labels.Last();
-                pos = [0, prevField.Location.Y + prevField.Height];
+                pos = new Point(0, prevField.Location.Y + prevField.Height);
             }
             var firstField = display.AddLabel(pos);
             bool firstText = true;
@@ -149,11 +141,11 @@ namespace ConsoleSharp
         {
             if (field == null)
             {
-                int[]? pos = null;
+                Point? pos = null;
                 if (display.Window.Labels.Count > 0)
                 {
                     var prevField = display.Window.Labels.Last();
-                    pos = [prevField.Location.X + prevField.Width, prevField.Location.Y];
+                    pos = new Point(prevField.Location.X + prevField.Width, prevField.Location.Y);
                 }
                 field = display.AddLabel(pos);
             }
@@ -229,16 +221,6 @@ namespace ConsoleSharp
 
     public static class Utils
     {
-        public static void SetDims(Form window, int[] dims)
-        {
-            window.Size = new Size(dims[0], dims[1]);
-        }
-
-        public static void SetPos(Form window, int[] pos)
-        {
-            window.Location = new Point(pos[0], pos[1]);
-        }
-
         public static List<string> ParseString(string input)
         {
             List<string> chars = new List<string>();
