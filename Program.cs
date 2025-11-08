@@ -21,18 +21,18 @@ namespace ConsoleSharp
         {
             foreach (var line in lines)
             {
-                line.PrintText(this);
+                line.PrintText(display: this);
             }
         }
 
         public void Print(Line line)
         {
-            line.PrintText(this);
+            line.PrintText(display: this);
         }
 
         public void Print(TextBlock text)
         {
-            text.PrintText(this);
+            text.PrintText(display: this);
         }
 
         public void Print()
@@ -166,14 +166,9 @@ namespace ConsoleSharp
         }
     }
 
-    public class CSColor
+    public class CSColor(int r = 0, int g = 0, int b = 0, int a = 255)
     {
-        public Color ColorData { get; private set; }
-
-        public CSColor(int r = 0, int g = 0, int b = 0, int a = 255)
-        {
-            ColorData = Color.FromArgb(a, r, g, b);
-        }
+        public Color ColorData { get; private set; } = Color.FromArgb(a, r, g, b);
     }
 
     public class Effect
@@ -192,9 +187,9 @@ namespace ConsoleSharp
         }
     }
 
-    public class TypeWriter : Effect
+    public class TypeWriter(int delay = 500) : Effect
     {
-        public int Delay { get; set; }
+        public int Delay { get; set; } = delay;
 
         public override void PrintEffect(string text, Label field)
         {
@@ -205,18 +200,11 @@ namespace ConsoleSharp
                 Thread.Sleep(Delay);
             }
         }
-
-        public TypeWriter(int delay = 500)
-        {
-            Delay = delay;
-        }
     }
 
     public class Window : Form
     {
         public List<Label> Labels { get; private set; } = new List<Label>();
-
-        public Window() { }
     }
 
     public static class Utils
