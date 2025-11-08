@@ -4,8 +4,8 @@ var display = new Display(dimensions: [1920, 1080]);
 List<Line> lines = [new Line(new TextBlock(text: "Hello World", effect: new TypeWriter(delay: 100))), 
     new Line(new TextBlock(text: "Goodbye World", textColor: new CSColor(0, 255, 0), effect: new TypeWriter(delay: 100)))];
 display.Print(lines);
-var display2 = new Display(dimensions: [1920, 1080]);
-display2.Print(lines);
+display.Print();
+display.Print(lines);
 
 namespace ConsoleSharp
 {
@@ -35,6 +35,17 @@ namespace ConsoleSharp
             text.PrintText(this);
         }
 
+        public void Print()
+        {
+            int[]? pos = null;
+            if (Window.Labels.Count > 0)
+            {
+                var prevField = Window.Labels.Last();
+                pos = [0, prevField.Location.Y + prevField.Height];
+            }
+            AddLabel(pos);
+        }
+
         public Label AddLabel(int[]? pos = null)
         {
             var label = new Label();
@@ -51,7 +62,7 @@ namespace ConsoleSharp
             return Window.Labels.Last();
         }
 
-        public Display(string name = "New Display", int[]? dimensions = null, int[]? position = null)
+        public Display(string name = "New Display", int[]? dimensions = null, int[]? position = null, CSColor? bgColor = null)
         {
             if (dimensions != null && dimensions.Length != 2)
             {
@@ -64,6 +75,8 @@ namespace ConsoleSharp
             var formReady = new AutoResetEvent(false);
             int[] dims = dimensions ?? DefaultDims;
             int[] pos = position ?? [Screen.PrimaryScreen.Bounds.Width / 2 - dims[0] / 2, Screen.PrimaryScreen.Bounds.Height / 2 - dims[1] / 2];
+            bgColor = bgColor ?? new CSColor();
+
             UIThread = new Thread(() =>
             {
                 Window = new Window();
@@ -71,10 +84,12 @@ namespace ConsoleSharp
                 Window.StartPosition = FormStartPosition.Manual;
                 Window.AutoScroll = true;
                 Window.Text = name;
+                Window.BackColor = bgColor.ColorData;
                 Utils.SetDims(Window, dims);
                 Utils.SetPos(Window, pos);
                 Application.Run(Window);
             });
+
             UIThread.SetApartmentState(ApartmentState.STA);
             UIThread.Start();
             formReady.WaitOne();
