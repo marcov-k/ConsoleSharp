@@ -1,10 +1,10 @@
 using ConsoleSharp;
 
 var display = new Display(dimensions: new Size(1920, 1080));
-List<Line> lines = [new Line(new TextBlock(text: "Hello World", effect: new TypeWriter(delay: 100))), 
-    new Line(new TextBlock(text: "Goodbye World", textColor: new CSColor(0, 255, 0), effect: new TypeWriter(delay: 100)))];
+List<Line> lines = [new Line(new TextBlock(text: "Hello World", font: new CSFont(fontStyles: [FontStyle.Underline, FontStyle.Strikeout]), effect: new TypeWriter(delay: 100))), 
+    new Line(new TextBlock(text: "Goodbye World", textColor: new CSColor(0, 255, 0), font: new CSFont(fontSize: 20, fontStyle: FontStyle.Bold), effect: new TypeWriter(delay: 100)))];
 display.Print(lines);
-display.Print();
+display.Print(20);
 display.Print(lines);
 
 namespace ConsoleSharp
@@ -35,7 +35,7 @@ namespace ConsoleSharp
             text.PrintText(display: this);
         }
 
-        public void Print()
+        public void Print(int? fontSize = null)
         {
             Point? pos = null;
             if (Window.Labels.Count > 0)
@@ -43,16 +43,18 @@ namespace ConsoleSharp
                 var prevField = Window.Labels.Last();
                 pos = new Point(0, prevField.Location.Y + prevField.Height);
             }
-            AddLabel(pos);
+            AddLabel(pos, fontSize);
         }
 
-        public Label AddLabel(Point? pos = null)
+        public Label AddLabel(Point? pos = null, int? fontSize = null)
         {
+            CSFont font = new CSFont(fontSize: fontSize, fontStyle: null);
             var label = new Label();
             label.AutoSize = true;
             if (pos != null)
             {
                 label.Location = pos.Value;
+                label.Font = font.FontData;
             }
             Window.Invoke(() =>
             {
@@ -135,6 +137,7 @@ namespace ConsoleSharp
         public string Text { get; set; } = "";
         public CSColor TextColor { get; set; } = new CSColor(255, 255, 255);
         public CSColor BGColor { get; set; } = new CSColor();
+        public CSFont Font { get; set; } = new CSFont();
         public Effect Effect { get; set; }
 
         public void PrintText(Display display, Label? field = null)
@@ -153,15 +156,17 @@ namespace ConsoleSharp
             {
                 field.BackColor = BGColor.ColorData;
                 field.ForeColor = TextColor.ColorData;
+                field.Font = Font.FontData;
             });
             Effect.PrintEffect(Text, field);
         }
 
-        public TextBlock(string? text = null, CSColor? textColor = null, CSColor? bgColor = null, Effect? effect = null)
+        public TextBlock(string? text = null, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, Effect? effect = null)
         {
             Text = text ?? Text;
             TextColor = textColor ?? TextColor;
             BGColor = bgColor ?? BGColor;
+            Font = font ?? Font;
             Effect = effect ?? DefaultEffect;
         }
     }
@@ -169,6 +174,46 @@ namespace ConsoleSharp
     public class CSColor(int r = 0, int g = 0, int b = 0, int a = 255)
     {
         public Color ColorData { get; private set; } = Color.FromArgb(a, r, g, b);
+    }
+
+    public class CSFont
+    {
+        public static FontFamily DefaultFontFamily { get; set; } = FontFamily.GenericSansSerif;
+        public static int DefaultFontSize { get; set; } = 12;
+        public static FontStyle DefaultFontStyle { get; set; } = FontStyle.Regular;
+        public Font FontData { get; private set; }
+
+        public CSFont()
+        {
+            FontData = new Font(DefaultFontFamily, DefaultFontSize, DefaultFontStyle);
+        }
+
+        public CSFont(FontFamily? fontFamily = null, int? fontSize = null)
+        {
+            FontFamily family = fontFamily ?? DefaultFontFamily;
+            int size = fontSize ?? DefaultFontSize;
+            FontData = new Font(family, size);
+        }
+
+        public CSFont(FontFamily? fontFamily = null, int? fontSize = null, FontStyle? fontStyle = null) : this(fontFamily, fontSize)
+        {
+            FontStyle style = fontStyle ?? DefaultFontStyle;
+            FontData = new Font(FontData.FontFamily, FontData.SizeInPoints, style);
+        }
+
+        public CSFont(FontFamily? fontFamily = null, int? fontSize = null, List<FontStyle>? fontStyles = null) : this(fontFamily, fontSize)
+        {
+            FontStyle style = DefaultFontStyle;
+            if (fontStyles != null)
+            {
+                style = FontStyle.Regular;
+                foreach (var fontStyle in fontStyles)
+                {
+                    style |= fontStyle;
+                }
+            }
+            FontData = new Font(FontData.FontFamily, FontData.SizeInPoints, style);
+        }
     }
 
     public class Effect
