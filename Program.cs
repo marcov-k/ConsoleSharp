@@ -9,6 +9,7 @@ display.Print(lines);
 
 namespace ConsoleSharp
 {
+    using Microsoft.VisualBasic.Devices;
     using System.Windows.Forms;
 
     public class Display
@@ -16,6 +17,7 @@ namespace ConsoleSharp
         public static Size DefaultDims { get; set; } = new Size(500, 500);
         public Window Window { get; private set; } = new Window();
         readonly Thread UIThread;
+        readonly Audio Audio;
 
         public void Print(List<Line> lines)
         {
@@ -46,6 +48,11 @@ namespace ConsoleSharp
             AddLabel(pos, fontSize);
         }
 
+        public void PlayWAV(string file)
+        {
+            Audio.Play(file);
+        }
+
         public Label AddLabel(Point? pos = null, int? fontSize = null)
         {
             CSFont font = new CSFont(fontSize: fontSize, fontStyle: null);
@@ -66,6 +73,7 @@ namespace ConsoleSharp
 
         public Display(string name = "New Display", Size? dimensions = null, Point? position = null, CSColor? bgColor = null)
         {
+            Audio = new Audio();
             var formReady = new AutoResetEvent(false);
             Size dims = dimensions ?? DefaultDims;
             Point pos = position ?? new Point(Screen.PrimaryScreen.Bounds.Width / 2 - dims.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2 - dims.Height / 2);
