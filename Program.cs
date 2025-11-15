@@ -177,15 +177,19 @@ namespace ConsoleSharp
         }
     }
 
-    public class CSColor(int r = 0, int g = 0, int b = 0, int a = 255)
+    public class CSColor
     {
         public int R
         {
             get { return _r; }
             set
             {
-                _r = value;
-                UpdateColorData();
+                if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "R", message: $"{value} is outside the range. Value must be between 0 and 255");
+                else
+                {
+                    _r = value;
+                    UpdateColorData();
+                }
             }
         }
         public int G
@@ -193,8 +197,12 @@ namespace ConsoleSharp
             get { return _g; }
             set
             {
-                _g = value;
-                UpdateColorData();
+                if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "G", message: $"{value} is outside the range. Value must be between 0 and 255");
+                else
+                {
+                    _g = value;
+                    UpdateColorData();
+                }
             }
         }
         public int B
@@ -202,8 +210,12 @@ namespace ConsoleSharp
             get { return _b; }
             set
             {
-                _b = value;
-                UpdateColorData();
+                if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "B", message: $"{value} is outside the range. Value must be between 0 and 255");
+                else
+                {
+                    _b = value;
+                    UpdateColorData();
+                }
             }
         }
         public int A
@@ -211,17 +223,21 @@ namespace ConsoleSharp
             get { return _a; }
             set
             {
-                _a = value;
-                UpdateColorData();
+                if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "A", message: $"{value} is outside the range. Value must be between 0 and 255");
+                else
+                {
+                    _a = value;
+                    UpdateColorData();
+                }
             }
         }
 
-        private int _r = r;
-        private int _g = g;
-        private int _b = b;
-        private int _a = a;
+        private int _r = 0;
+        private int _g = 0;
+        private int _b = 0;
+        private int _a = 0;
 
-        public Color ColorData { get; private set; } = Color.FromArgb(a, r, g, b);
+        public Color ColorData { get; private set; }
 
         void UpdateColorData()
         {
@@ -231,6 +247,14 @@ namespace ConsoleSharp
         public CSColor Clone()
         {
             return new CSColor(_r, _g, _b, _a);
+        }
+
+        public CSColor(int r = 0, int g = 0, int b = 0, int a = 255)
+        {
+            R = r;
+            G = g;
+            B = b;
+            A = a;
         }
     }
 
