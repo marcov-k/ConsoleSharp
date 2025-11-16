@@ -46,6 +46,11 @@ namespace ConsoleSharp
             text.PrintText(display: this);
         }
 
+        public void Print(string text)
+        {
+
+        }
+
         public void Print(int? fontSize = null)
         {
             Point? pos = null;
@@ -139,7 +144,7 @@ namespace ConsoleSharp
 
     public class TextCont
     {
-        public virtual void PrintText(Display display)
+        public virtual void PrintText(Display display, Label? field = null)
         {
             throw new NotImplementedException();
         }
@@ -149,7 +154,7 @@ namespace ConsoleSharp
     {
         public List<TextBlock> TextBlocks { get; set; } = new List<TextBlock>();
 
-        public override void PrintText(Display display)
+        public override void PrintText(Display display, Label? field = null)
         {
             Point? pos = null;
             if (display.Window.Labels.Count > 0)
@@ -397,14 +402,44 @@ namespace ConsoleSharp
         [GeneratedRegex(@"^(?<r>[0-9a-f]{2})(?<g>[0-9a-f]{2})(?<b>[0-9a-f]{2})$")]
         private static partial Regex HexRegex();
 
-        public static List<string> ParseString(string input)
+        [GeneratedRegex(@"^(?:\\ln(?<ln>.*?)/ln)+$")]
+        private static partial Regex LineRegex();
+
+        public static List<TextCont> BuildFromString(string text)
         {
-            List<string> chars = new List<string>();
-            foreach (var chara in input.ToCharArray())
+            var output = new List<TextCont>();
+            var lines = SplitToLines(text);
+            foreach (var line in lines)
             {
-                chars.Add(chara.ToString());
+                var texts = SplitToTextBlocks(line);
+                output.Add(new Line(texts));
             }
-            return chars.ToList();
+            return output;
+        }
+
+        static List<string> SplitToLines(string text)
+        {
+            var lines = new List<string>();
+            if (LineRegex().IsMatch(text))
+            {
+                var match = LineRegex().Match(text);
+                var group = match.Groups.GetValueOrDefault("ln");
+                var captures = group.Captures;
+                foreach (Capture capture in captures)
+                {
+                    lines.Add(capture.Value);
+                }
+            }
+            else lines.Add(text);
+
+            return lines;
+        }
+
+        static List<TextBlock> SplitToTextBlocks(string text)
+        {
+            var textBlocks = new List<TextBlock>();
+
+            return textBlocks;
         }
 
         public static (int r, int g, int b) HexToRGB(string hex)
@@ -431,6 +466,16 @@ namespace ConsoleSharp
                 dec += val * (int)Math.Pow(16, i);
             }
             return dec;
+        }
+
+        public static List<string> ParseString(string input)
+        {
+            List<string> chars = new List<string>();
+            foreach (var chara in input.ToCharArray())
+            {
+                chars.Add(chara.ToString());
+            }
+            return chars.ToList();
         }
     }
 
