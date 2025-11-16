@@ -4,6 +4,7 @@ var display = new Display(dimensions: new Size(1920, 1080));
 List<Line> lines = [new Line(new TextBlock(text: "Hello World", font: new CSFont(fontStyles: [FontStyle.Underline, FontStyle.Strikeout]), effect: new TypeWriter(delay: 100))), 
     new Line(new TextBlock(text: "Goodbye World", textColor: new CSColor(0, 255, 0), font: new CSFont(fontSize: 20, fontStyle: FontStyle.Bold), effect: new TypeWriter(delay: 100)))];
 display.Print(lines);
+display.PrintDivider();
 display.Print(20);
 display.Print(lines);
 
@@ -47,6 +48,37 @@ namespace ConsoleSharp
             AddLabel(pos, fontSize);
         }
 
+        public void PrintDivider(CSFont? font = null, CSColor? textColor = null, CSColor? bgColor = null, Effect? effect = null)
+        {
+            font = font ?? new CSFont();
+            textColor = textColor ?? Colors.White;
+            bgColor = bgColor ?? Colors.Black;
+            effect = effect ?? new NoEffect();
+
+            var sizingLabel = new Label();
+            sizingLabel.AutoSize = true;
+            sizingLabel.Font = font.FontData;
+            sizingLabel.Text += "-";
+            sizingLabel.AutoSize = false;
+            sizingLabel.Width = Window.Width;
+
+            string fillString = "";
+            bool maxxed = false;
+            while (!maxxed)
+            {
+                fillString += "-";
+                var textSize = TextRenderer.MeasureText(text: fillString, font: font.FontData);
+                if (textSize.Width > sizingLabel.Width)
+                {
+                    fillString.Remove(fillString.Length - 1);
+                    maxxed = true;
+                }
+            }
+
+            Line fillLine = new Line(new TextBlock(text: fillString, textColor: textColor, bgColor: bgColor, font: font, effect: effect));
+            Print(fillLine);
+        }
+
         public void PlayWAV(string file)
         {
             Window.BeginInvoke(() => Window.Audio.Play(file));
@@ -60,8 +92,8 @@ namespace ConsoleSharp
             if (pos != null)
             {
                 label.Location = pos.Value;
-                label.Font = font.FontData;
             }
+            label.Font = font.FontData;
             Window.Invoke(() =>
             {
                 Window.Labels.Add(label);
@@ -106,7 +138,7 @@ namespace ConsoleSharp
             if (display.Window.Labels.Count > 0)
             {
                 var prevField = display.Window.Labels.Last();
-                pos = new Point(0, prevField.Location.Y + prevField.Height);
+                pos = new Point(0, prevField.Location.Y + prevField.GetPreferredSize(new Size(prevField.Width, 0)).Height);
             }
             var firstField = display.AddLabel(pos);
             bool firstText = true;
@@ -255,6 +287,96 @@ namespace ConsoleSharp
             G = g;
             B = b;
             A = a;
+        }
+    }
+
+    public class CSFont
+    {
+        public static FontFamily DefaultFontFamily { get; set; } = FontFamily.GenericSansSerif;
+        public static int DefaultFontSize { get; set; } = 12;
+        public static FontStyle DefaultFontStyle { get; set; } = FontStyle.Regular;
+        public Font FontData { get; private set; }
+
+        public CSFont()
+        {
+            FontData = new Font(DefaultFontFamily, DefaultFontSize, DefaultFontStyle);
+        }
+
+        public CSFont(FontFamily? fontFamily = null, int? fontSize = null)
+        {
+            FontFamily family = fontFamily ?? DefaultFontFamily;
+            int size = fontSize ?? DefaultFontSize;
+            FontData = new Font(family, size);
+        }
+
+        public CSFont(FontFamily? fontFamily = null, int? fontSize = null, FontStyle? fontStyle = null) : this(fontFamily, fontSize)
+        {
+            FontStyle style = fontStyle ?? DefaultFontStyle;
+            FontData = new Font(FontData.FontFamily, FontData.SizeInPoints, style);
+        }
+
+        public CSFont(FontFamily? fontFamily = null, int? fontSize = null, List<FontStyle>? fontStyles = null) : this(fontFamily, fontSize)
+        {
+            FontStyle style = DefaultFontStyle;
+            if (fontStyles != null)
+            {
+                style = FontStyle.Regular;
+                foreach (var fontStyle in fontStyles)
+                {
+                    style |= fontStyle;
+                }
+            }
+            FontData = new Font(FontData.FontFamily, FontData.SizeInPoints, style);
+        }
+    }
+
+    public class Effect
+    {
+        public virtual void PrintEffect(string text, Label field)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class NoEffect : Effect
+    {
+        public override void PrintEffect(string text, Label field)
+        {
+            field.BeginInvoke(() => field.Text += text);
+        }
+    }
+
+    public class TypeWriter(int delay = 500) : Effect
+    {
+        public int Delay { get; set; } = delay;
+
+        public override void PrintEffect(string text, Label field)
+        {
+            var chars = Utils.ParseString(text);
+            foreach (var chara in chars)
+            {
+                field.BeginInvoke(() => field.Text += chara);
+                Thread.Sleep(Delay);
+            }
+        }
+    }
+
+    public class Window : Form
+    {
+        public List<Label> Labels { get; private set; } = new List<Label>();
+        public Audio Audio { get; private set; } = new Audio();
+    }
+
+    public static class Utils
+    {
+        public static List<string> ParseString(string input)
+        {
+            List<string> chars = new List<string>();
+            foreach (var chara in input.ToCharArray())
+            {
+                chars.Add(chara.ToString());
+            }
+            return chars;
         }
     }
 
@@ -556,95 +678,5 @@ namespace ConsoleSharp
         private static readonly CSColor _yellow = new CSColor(255, 255, 0);
         public static CSColor YellowGreen { get { return _yellowGreen.Clone(); } }
         private static readonly CSColor _yellowGreen = new CSColor(154, 205, 50);
-    }
-
-    public class CSFont
-    {
-        public static FontFamily DefaultFontFamily { get; set; } = FontFamily.GenericSansSerif;
-        public static int DefaultFontSize { get; set; } = 12;
-        public static FontStyle DefaultFontStyle { get; set; } = FontStyle.Regular;
-        public Font FontData { get; private set; }
-
-        public CSFont()
-        {
-            FontData = new Font(DefaultFontFamily, DefaultFontSize, DefaultFontStyle);
-        }
-
-        public CSFont(FontFamily? fontFamily = null, int? fontSize = null)
-        {
-            FontFamily family = fontFamily ?? DefaultFontFamily;
-            int size = fontSize ?? DefaultFontSize;
-            FontData = new Font(family, size);
-        }
-
-        public CSFont(FontFamily? fontFamily = null, int? fontSize = null, FontStyle? fontStyle = null) : this(fontFamily, fontSize)
-        {
-            FontStyle style = fontStyle ?? DefaultFontStyle;
-            FontData = new Font(FontData.FontFamily, FontData.SizeInPoints, style);
-        }
-
-        public CSFont(FontFamily? fontFamily = null, int? fontSize = null, List<FontStyle>? fontStyles = null) : this(fontFamily, fontSize)
-        {
-            FontStyle style = DefaultFontStyle;
-            if (fontStyles != null)
-            {
-                style = FontStyle.Regular;
-                foreach (var fontStyle in fontStyles)
-                {
-                    style |= fontStyle;
-                }
-            }
-            FontData = new Font(FontData.FontFamily, FontData.SizeInPoints, style);
-        }
-    }
-
-    public class Effect
-    {
-        public virtual void PrintEffect(string text, Label field)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    public class NoEffect : Effect
-    {
-        public override void PrintEffect(string text, Label field)
-        {
-            field.BeginInvoke(() => field.Text += text);
-        }
-    }
-
-    public class TypeWriter(int delay = 500) : Effect
-    {
-        public int Delay { get; set; } = delay;
-
-        public override void PrintEffect(string text, Label field)
-        {
-            var chars = Utils.ParseString(text);
-            foreach (var chara in chars)
-            {
-                field.BeginInvoke(() => field.Text += chara);
-                Thread.Sleep(Delay);
-            }
-        }
-    }
-
-    public class Window : Form
-    {
-        public List<Label> Labels { get; private set; } = new List<Label>();
-        public Audio Audio { get; private set; } = new Audio();
-    }
-
-    public static class Utils
-    {
-        public static List<string> ParseString(string input)
-        {
-            List<string> chars = new List<string>();
-            foreach (var chara in input.ToCharArray())
-            {
-                chars.Add(chara.ToString());
-            }
-            return chars;
-        }
     }
 }
