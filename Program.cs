@@ -11,6 +11,7 @@ display.Print(lines);
 namespace ConsoleSharp
 {
     using Microsoft.VisualBasic.Devices;
+    using System.Text.RegularExpressions;
     using System.Windows.Forms;
 
     public class Display
@@ -136,11 +137,19 @@ namespace ConsoleSharp
         }
     }
 
-    public class Line
+    public class TextCont
+    {
+        public virtual void PrintText(Display display)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class Line : TextCont
     {
         public List<TextBlock> TextBlocks { get; set; } = new List<TextBlock>();
 
-        public void PrintText(Display display)
+        public override void PrintText(Display display)
         {
             Point? pos = null;
             if (display.Window.Labels.Count > 0)
@@ -177,7 +186,7 @@ namespace ConsoleSharp
         }
     }
 
-    public class TextBlock
+    public class TextBlock : TextCont
     {
         public static Effect DefaultEffect { get; set; } = new NoEffect();
         public string Text { get; set; } = "";
@@ -186,7 +195,7 @@ namespace ConsoleSharp
         public CSFont Font { get; set; } = new CSFont();
         public Effect Effect { get; set; }
 
-        public void PrintText(Display display, Label? field = null)
+        public override void PrintText(Display display, Label? field = null)
         {
             if (field == null)
             {
@@ -291,9 +300,12 @@ namespace ConsoleSharp
 
         public CSColor(int r = 0, int g = 0, int b = 0, int a = 255)
         {
-            R = r;
-            G = g;
-            B = b;
+            (R, G, B, A) = (r, g, b, a);
+        }
+
+        public CSColor(string hex = "000000", int a = 255)
+        {
+            (R, G, B) = Utils.HexToRGB(hex);
             A = a;
         }
     }
@@ -375,8 +387,16 @@ namespace ConsoleSharp
         public Audio Audio { get; private set; } = new Audio();
     }
 
-    public static class Utils
+    public static partial class Utils
     {
+        static readonly Dictionary<string, int> Convs = new()
+        {
+            {"0",0}, {"1",1}, {"2",2}, {"3",3}, {"4",4}, {"5",5}, {"6",6}, {"7",7}, {"8",8}, {"9",9}, {"a",10}, {"b",11}, {"c",12}, {"d",13}, {"e",14}, {"f",15}
+        };
+
+        [GeneratedRegex(@"^(?<r>[0-9a-f]{2})(?<g>[0-9a-f]{2})(?<b>[0-9a-f]{2})$")]
+        private static partial Regex HexRegex();
+
         public static List<string> ParseString(string input)
         {
             List<string> chars = new List<string>();
@@ -384,7 +404,33 @@ namespace ConsoleSharp
             {
                 chars.Add(chara.ToString());
             }
-            return chars;
+            return chars.ToList();
+        }
+
+        public static (int r, int g, int b) HexToRGB(string hex)
+        {
+            if (HexRegex().IsMatch(hex))
+            {
+                var match = HexRegex().Match(hex);
+                var groups = match.Groups;
+                var (rHex, gHex, bHex) = (groups.GetValueOrDefault("r").Value, groups.GetValueOrDefault("g").Value, groups.GetValueOrDefault("b").Value);
+                var (r, g, b) = (HexToDec(rHex), HexToDec(gHex), HexToDec(bHex));
+                return (r, g, b);
+            }
+            else return (-1, -1, -1);
+        }
+
+        public static int HexToDec(string hex)
+        {
+            var chars = ParseString(hex);
+            chars.Reverse();
+            int dec = 0;
+            for (int i = 0; i < chars.Count; i++)
+            {
+                int val = Convs[chars[i]];
+                dec += val * (int)Math.Pow(16, i);
+            }
+            return dec;
         }
     }
 
