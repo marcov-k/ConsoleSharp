@@ -32,6 +32,14 @@ namespace ConsoleSharp
             line.PrintText(display: this);
         }
 
+        public void Print(List<TextBlock> texts)
+        {
+            foreach (var text in texts)
+            {
+                text.PrintText(display: this);
+            }
+        }
+
         public void Print(TextBlock text)
         {
             text.PrintText(display: this);
