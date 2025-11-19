@@ -303,6 +303,11 @@ namespace ConsoleSharp
             return new CSColor(_r, _g, _b, _a);
         }
 
+        public CSColor()
+        {
+            (R, G, B, A) = (0, 0, 0, 255);
+        }
+
         public CSColor(int r = 0, int g = 0, int b = 0, int a = 255)
         {
             (R, G, B, A) = (r, g, b, a);
@@ -394,16 +399,36 @@ namespace ConsoleSharp
 
     public static partial class Utils
     {
+        // String to int conversions for hexadecimal to decimal conversion.
         static readonly Dictionary<string, int> Convs = new()
         {
             {"0",0}, {"1",1}, {"2",2}, {"3",3}, {"4",4}, {"5",5}, {"6",6}, {"7",7}, {"8",8}, {"9",9}, {"a",10}, {"b",11}, {"c",12}, {"d",13}, {"e",14}, {"f",15}
         };
 
-        [GeneratedRegex(@"^(?<r>[0-9a-f]{2})(?<g>[0-9a-f]{2})(?<b>[0-9a-f]{2})$")]
+        // Regex's for reading of embedded styling in strings plus other utilities.
+        [GeneratedRegex(@"(?<r>[0-9a-f]{2})(?<g>[0-9a-f]{2})(?<b>[0-9a-f]{2})")]
         private static partial Regex HexRegex();
 
-        [GeneratedRegex(@"^(?:\\ln(?<ln>.*?)/ln)+$")]
+        [GeneratedRegex(@"\\ln(?<ln>.*?)/ln")]
         private static partial Regex LineRegex();
+
+        [GeneratedRegex(@"\\tb(?: *< *(?<head>(?:tc: *(?:(?:[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3})|(?:[0-9a-f]{6}))(?:, *[0-9]{1,3})?;)? *(?:bc: *[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3}(?:, *[0-9]{1,3})?;)? *
+            (?:ft: *(?:[A-Za-z]*)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))[0-9]+)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))\([A-Za-z]+(?:, *[A-Za-z]+)*\))?;)? *(?:ef: *[A-Za-z]+(?:, *[\w]+)?;)?) *>)?(?<body>.*?)/tb")]
+        private static partial Regex TextBlockRegex();
+
+        [GeneratedRegex(@"^(?:(?:tc: *(?<tc>(?:(?:[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3})|(?:[0-9a-f]{6}))(?:, *[0-9]{1,3})?); *)?(?:bc: *(?<bc>(?:(?:[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3})|(?:[0-9a-f]{6}))(?:,
+            *[0-9]{1,3})?); *)?(?:ft: *(?<ft>(?:[A-Za-z]*)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))[0-9]+)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))\([A-Za-z]+(?:, *[A-Za-z]+)*\))?); *)?(?:ef: *(?<ef>[A-Za-z]+(?:, *[\w]+)?); *)?)$")]
+        private static partial Regex HeadRegex();
+
+        [GeneratedRegex(@"^(?:(?:tc: *(?<tc>(?:(?:[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3})|(?:[0-9a-f]{6}))(?:, *[0-9]{1,3})?); *)?(?:bc: *(?<bc>(?:(?:[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3})|(?:[0-9a-f]{6}))(?:, *[0-9]{1,3})?); *)?
+            (?:ft: *(?<ft>(?:[A-Za-z]*)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))[0-9]+)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))\([A-Za-z]+(?:, *[A-Za-z]+)*\))?); *)?(?:ef: *(?<ef>[A-Za-z]+(?:, *[\w]+)?); *)?)$")]
+        private static partial Regex ColorRegex();
+
+        [GeneratedRegex(@"^(?<r>[0-9]{1,3}), *(?<g>[0-9]{1,3}), *(?<b>[0-9]{1,3})$")]
+        private static partial Regex RGBRegex();
+
+        [GeneratedRegex(@"^(?<fmly>[A-Za-z]+), *(?<size>[0-9]+), *(?<styl>\([A-Za-z]+(?:, *[A-Za-z]+)*\))$")]
+        private static partial Regex FontRegex();
 
         public static List<TextCont> BuildFromString(string text)
         {
@@ -422,12 +447,11 @@ namespace ConsoleSharp
             var lines = new List<string>();
             if (LineRegex().IsMatch(text))
             {
-                var match = LineRegex().Match(text);
-                var group = match.Groups.GetValueOrDefault("ln");
-                var captures = group.Captures;
-                foreach (Capture capture in captures)
+                var matches = LineRegex().Matches(text);
+                foreach (Match match in matches)
                 {
-                    lines.Add(capture.Value);
+                    var group = match.Groups.GetValueOrDefault("ln");
+                    lines.Add(group.Value);
                 }
             }
             else lines.Add(text);
@@ -438,8 +462,121 @@ namespace ConsoleSharp
         static List<TextBlock> SplitToTextBlocks(string text)
         {
             var textBlocks = new List<TextBlock>();
-
+            var tbDataList = new List<TBStringData>();
+            if (TextBlockRegex().IsMatch(text))
+            {
+                var matches = TextBlockRegex().Matches(text);
+                int matchNum = 0;
+                foreach (Match match in matches)
+                {
+                    var headGroup = match.Groups.GetValueOrDefault("head");
+                    string head = (headGroup != null) ? headGroup.Value : "";
+                    var bodyGroup = match.Groups.GetValueOrDefault("body");
+                    var body = bodyGroup.Value;
+                    tbDataList.Add(new TBStringData(matchNum, head, body));
+                }
+            }
+            var tbData = new TBDataCont(tbDataList);
+            textBlocks.AddRange(BuildTextBlocks(tbData));
             return textBlocks;
+        }
+
+        static List<TextBlock> BuildTextBlocks(TBDataCont data)
+        {
+            var textBlocks = new List<TextBlock>();
+            for (int i = 0; i < data.GetMaxIndex(); i++)
+            {
+                var block = data.GetData(i);
+                if (block != null)
+                {
+                    var head = block.Head;
+                    var body = block.Body;
+
+                    var (tc, bc, ft, ef) = ("", "", "", "");
+                    if (head != "")
+                    {
+                        var match = HeadRegex().Match(head);
+                        var tcGroup = match.Groups.GetValueOrDefault("tc");
+                        var bcGroup = match.Groups.GetValueOrDefault("bc");
+                        var ftGroup = match.Groups.GetValueOrDefault("ft");
+                        var efGroup = match.Groups.GetValueOrDefault("ef");
+
+                        tc = (tcGroup != null) ? tcGroup.Value : tc;
+                        bc = (bcGroup != null) ? bcGroup.Value : bc;
+                        ft = (ftGroup != null) ? ftGroup.Value : ft;
+                        ef = (efGroup != null) ? efGroup.Value : ef;
+                    }
+                    var textColor = BuildColor(tc);
+                    var bgColor = BuildColor(bc);
+                    var font = BuildFont(ft);
+                    var effect = BuildEffect(ef);
+                    var blockObj = new TextBlock(body, textColor, bgColor, font, effect);
+                    textBlocks.Add(blockObj);
+                }
+            }
+            return textBlocks;
+        }
+
+        static CSFont BuildFont(string text)
+        {
+            var font = new CSFont();
+            if (FontRegex().IsMatch(text))
+            {
+                var match = FontRegex().Match(text);
+                var fmlyGroup = match.Groups.GetValueOrDefault("fmly");
+                var sizeGroup = match.Groups.GetValueOrDefault("size");
+                var stylGroup = match.Groups.GetValueOrDefault("styl");
+            }
+            return font;
+        }
+
+        static Effect BuildEffect(string text)
+        {
+            var effect = new NoEffect();
+            return effect;
+        }
+
+        static CSColor BuildColor(string text)
+        {
+            var color = new CSColor();
+            if (ColorRegex().IsMatch(text))
+            {
+                var match = ColorRegex().Match(text);
+                var rgbGroup = match.Groups.GetValueOrDefault("rgb");
+                var alphaGroup = match.Groups.GetValueOrDefault("alpha");
+
+                var (r, g, b, a) = (0, 0, 0, 255);
+                if (rgbGroup != null)
+                {
+                    (r, g, b) = BuildRGB(rgbGroup.Value);
+                }
+                if (alphaGroup != null)
+                {
+                    a = Convert.ToInt32(alphaGroup.Value);
+                }
+                color = new CSColor(r, g, b, a);
+            }
+            return color;
+        }
+
+        static (int r, int g, int b) BuildRGB(string text)
+        {
+            var (r, g, b) = (0, 0, 0);
+            if (HexRegex().IsMatch(text))
+            {
+                (r, g, b) = HexToRGB(text);
+            }
+            else
+            {
+                if (RGBRegex().IsMatch(text))
+                {
+                    var match = RGBRegex().Match(text);
+                    r = Convert.ToInt32(match.Groups.GetValueOrDefault("r").Value);
+                    g = Convert.ToInt32(match.Groups.GetValueOrDefault("g").Value);
+                    b = Convert.ToInt32(match.Groups.GetValueOrDefault("b").Value);
+                }
+            }
+            return (r, g, b);
         }
 
         public static (int r, int g, int b) HexToRGB(string hex)
@@ -476,6 +613,49 @@ namespace ConsoleSharp
                 chars.Add(chara.ToString());
             }
             return chars.ToList();
+        }
+
+        private class TBDataCont
+        {
+            List<TBStringData> Data = new List<TBStringData>();
+
+            public TBStringData? GetData(int index)
+            {
+                var data = Data.Find((x) => x.Index == index);
+                return data;
+            }
+
+            public int GetMaxIndex()
+            {
+                var max = -1;
+                foreach (var tb in Data)
+                {
+                    if (tb.Index > max) max = tb.Index;
+                }
+                return max;
+            }
+
+            public void AddData(TBStringData data)
+            {
+                Data.Add(data);
+            }
+
+            public void AddData(List<TBStringData> data)
+            {
+                Data.AddRange(data);
+            }
+
+            public TBDataCont(List<TBStringData> data)
+            {
+                Data.AddRange(data);
+            }
+        }
+
+        private class TBStringData(int index, string head, string body)
+        {
+            public int Index { get; private set; } = index;
+            public string Head { get; private set; } = head;
+            public string Body { get; private set; } = body;
         }
     }
 
