@@ -13,6 +13,7 @@ namespace ConsoleSharp
     using Microsoft.VisualBasic.Devices;
     using System.Text.RegularExpressions;
     using System.Windows.Forms;
+    using System.Reflection;
 
     public class Display
     {
@@ -308,15 +309,19 @@ namespace ConsoleSharp
             (R, G, B, A) = (0, 0, 0, 255);
         }
 
-        public CSColor(int r = 0, int g = 0, int b = 0, int a = 255)
+        public CSColor(int? r = null, int? g = null, int? b = null, int? a = null)
         {
-            (R, G, B, A) = (r, g, b, a);
+            R = (r != null) ? r.Value : 0;
+            G = (g != null) ? g.Value : 0;
+            B = (b != null) ? b.Value : 0;
+            A = (a != null) ? a.Value : 255;
         }
 
-        public CSColor(string hex = "000000", int a = 255)
+        public CSColor(string? hex = null, int? a = null)
         {
+            hex ??= "000000";
             (R, G, B) = Utils.HexToRGB(hex);
-            A = a;
+            A = (a != null) ? a.Value : 255;
         }
     }
 
@@ -362,7 +367,14 @@ namespace ConsoleSharp
 
     public class Effect
     {
+        public Type? ParamType { get; private set; } = null;
+
         public virtual void PrintEffect(string text, Label field)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void SetParam(dynamic newParam)
         {
             throw new NotImplementedException();
         }
@@ -379,6 +391,7 @@ namespace ConsoleSharp
     public class TypeWriter(int delay = 500) : Effect
     {
         public int Delay { get; set; } = delay;
+        public new Type? ParamType { get; private set; } = delay.GetType();
 
         public override void PrintEffect(string text, Label field)
         {
@@ -388,6 +401,11 @@ namespace ConsoleSharp
                 field.BeginInvoke(() => field.Text += chara);
                 Thread.Sleep(Delay);
             }
+        }
+
+        public override void SetParam(dynamic newParam)
+        {
+            Delay = newParam;
         }
     }
 
@@ -405,30 +423,27 @@ namespace ConsoleSharp
             {"0",0}, {"1",1}, {"2",2}, {"3",3}, {"4",4}, {"5",5}, {"6",6}, {"7",7}, {"8",8}, {"9",9}, {"a",10}, {"b",11}, {"c",12}, {"d",13}, {"e",14}, {"f",15}
         };
 
+        static Dictionary<string, FontFamily>? Families = null;
+
+        static readonly Dictionary<string, FontStyle> Styles = new()
+        {
+            {"Regular",FontStyle.Regular}, {"Italic",FontStyle.Italic}, {"Bold",FontStyle.Bold}, {"Strikeout",FontStyle.Strikeout}, {"Underline",FontStyle.Underline}
+        };
+
+        static Dictionary<string, Type>? Effects = null;
+
         // Regex's for reading of embedded styling in strings plus other utilities.
         [GeneratedRegex(@"(?<r>[0-9a-f]{2})(?<g>[0-9a-f]{2})(?<b>[0-9a-f]{2})")]
         private static partial Regex HexRegex();
 
-        [GeneratedRegex(@"\\ln(?<ln>.*?)/ln")]
+        [GeneratedRegex(@"(?:(?:\\ln(?<line>.*?)/ln)|(?<line>(?:(?:[^\\])|(?:\\(?!ln)))+))|(?<line>(?<!.)(?!.))")]
         private static partial Regex LineRegex();
 
-        [GeneratedRegex(@"\\tb(?: *< *(?<head>(?:tc: *(?:(?:[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3})|(?:[0-9a-f]{6}))(?:, *[0-9]{1,3})?;)? *(?:bc: *[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3}(?:, *[0-9]{1,3})?;)? *
-            (?:ft: *(?:[A-Za-z]*)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))[0-9]+)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))\([A-Za-z]+(?:, *[A-Za-z]+)*\))?;)? *(?:ef: *[A-Za-z]+(?:, *[\w]+)?;)?) *>)?(?<body>.*?)/tb")]
+        [GeneratedRegex(@"(?:(?:\\tb(?: *< *(?:tc: *(?:(?:(?:(?<tc_r>[0-9]{1,3})(?:, *(?<tc_g>[0-9]{1,3}))(?:, *(?<tc_b>[0-9]{1,3})))|(?<tc_hex>[0-9a-f]{6}))(?:, *(?<tc_a>[0-9]{1,3}))?)?; *)?(?:bc: *(?:(?:(?:(?<bc_r>[0-9]{1,3}), *(?<bc_g>[0-9]{1,3}), *(?<bc_b>[0-9]{1,3}))|(?<bc_hex>[0-9a-f]{6}))(?:, *(?<bc_a>[0-9]{1,3}))?)?; *)?(?:ft: *(?:(?<fam>[A-Za-z]+)?(?:(?:(?:(?<=ft: *))|(?:(?<!ft: *), *))(?<size>[0-9]+))?(?:(?:(?:(?<=ft: *))|(?:(?<!ft: *), *))\((?<style>[A-Za-z]+(?:, *[A-Za-z]+)?)\))?)?; *)?(?:ef: *(?:(?<ef_name>[A-Za-z]+)(?:, *(?<ef_param>[\w]+))?)?; *)? *>)?(?<body>.*?)/tb)|(?<body>(?:(?:[^\\])|(?:\\(?!tb)))+))|(?<body>(?<!.)(?!.))")]
         private static partial Regex TextBlockRegex();
 
-        [GeneratedRegex(@"^(?:(?:tc: *(?<tc>(?:(?:[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3})|(?:[0-9a-f]{6}))(?:, *[0-9]{1,3})?); *)?(?:bc: *(?<bc>(?:(?:[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3})|(?:[0-9a-f]{6}))(?:,
-            *[0-9]{1,3})?); *)?(?:ft: *(?<ft>(?:[A-Za-z]*)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))[0-9]+)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))\([A-Za-z]+(?:, *[A-Za-z]+)*\))?); *)?(?:ef: *(?<ef>[A-Za-z]+(?:, *[\w]+)?); *)?)$")]
-        private static partial Regex HeadRegex();
-
-        [GeneratedRegex(@"^(?:(?:tc: *(?<tc>(?:(?:[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3})|(?:[0-9a-f]{6}))(?:, *[0-9]{1,3})?); *)?(?:bc: *(?<bc>(?:(?:[0-9]{1,3}, *[0-9]{1,3}, *[0-9]{1,3})|(?:[0-9a-f]{6}))(?:, *[0-9]{1,3})?); *)?
-            (?:ft: *(?<ft>(?:[A-Za-z]*)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))[0-9]+)?(?:(?:(?<=ft: *)|(?:(?<!ft: *), *))\([A-Za-z]+(?:, *[A-Za-z]+)*\))?); *)?(?:ef: *(?<ef>[A-Za-z]+(?:, *[\w]+)?); *)?)$")]
-        private static partial Regex ColorRegex();
-
-        [GeneratedRegex(@"^(?<r>[0-9]{1,3}), *(?<g>[0-9]{1,3}), *(?<b>[0-9]{1,3})$")]
-        private static partial Regex RGBRegex();
-
-        [GeneratedRegex(@"^(?<fmly>[A-Za-z]+), *(?<size>[0-9]+), *(?<styl>\([A-Za-z]+(?:, *[A-Za-z]+)*\))$")]
-        private static partial Regex FontRegex();
+        [GeneratedRegex(@"(?<style>[A-Za-z]+)")]
+        private static partial Regex StyleRegex();
 
         public static List<TextCont> BuildFromString(string text)
         {
@@ -450,8 +465,7 @@ namespace ConsoleSharp
                 var matches = LineRegex().Matches(text);
                 foreach (Match match in matches)
                 {
-                    var group = match.Groups.GetValueOrDefault("ln");
-                    lines.Add(group.Value);
+                    lines.Add(match.Groups["line"].Value);
                 }
             }
             else lines.Add(text);
@@ -459,126 +473,153 @@ namespace ConsoleSharp
             return lines;
         }
 
-        static List<TextBlock> SplitToTextBlocks(string text)
+        static List<TextBlock> SplitToTextBlocks(string line)
         {
             var textBlocks = new List<TextBlock>();
-            var tbDataList = new List<TBStringData>();
-            if (TextBlockRegex().IsMatch(text))
+            if (TextBlockRegex().IsMatch(line))
             {
-                var matches = TextBlockRegex().Matches(text);
-                int matchNum = 0;
+                var matches = TextBlockRegex().Matches(line); // Each match represents 1 TextBlock
                 foreach (Match match in matches)
                 {
-                    var headGroup = match.Groups.GetValueOrDefault("head");
-                    string head = (headGroup != null) ? headGroup.Value : "";
-                    var bodyGroup = match.Groups.GetValueOrDefault("body");
-                    var body = bodyGroup.Value;
-                    tbDataList.Add(new TBStringData(matchNum, head, body));
-                }
-            }
-            var tbData = new TBDataCont(tbDataList);
-            textBlocks.AddRange(BuildTextBlocks(tbData));
-            return textBlocks;
-        }
+                    // Text Color Parameters
+                    var tc_r = match.Groups["tc_r"].Success ? match.Groups["tc_r"].Value : null;
+                    var tc_g = match.Groups["tc_g"].Success ? match.Groups["tc_g"].Value : null;
+                    var tc_b = match.Groups["tc_b"].Success ? match.Groups["tc_b"].Value : null;
+                    var tc_hex = match.Groups["tc_hex"].Success ? match.Groups["tc_hex"].Value : null;
+                    var tc_a = match.Groups["tc_a"].Success ? match.Groups["tc_a"].Value : null;
 
-        static List<TextBlock> BuildTextBlocks(TBDataCont data)
-        {
-            var textBlocks = new List<TextBlock>();
-            for (int i = 0; i < data.GetMaxIndex(); i++)
-            {
-                var block = data.GetData(i);
-                if (block != null)
-                {
-                    var head = block.Head;
-                    var body = block.Body;
+                    // Background Color Parameters
+                    var bc_r = match.Groups["bc_r"].Success ? match.Groups["bc_r"].Value : null;
+                    var bc_g = match.Groups["bc_g"].Success ? match.Groups["bc_g"].Value : null;
+                    var bc_b = match.Groups["bc_b"].Success ? match.Groups["bc_b"].Value : null;
+                    var bc_hex = match.Groups["bc_hex"].Success ? match.Groups["bc_hex"].Value : null;
+                    var bc_a = match.Groups["bc_a"].Success ? match.Groups["bc_a"].Value : null;
 
-                    var (tc, bc, ft, ef) = ("", "", "", "");
-                    if (head != "")
+                    // Font Parameters
+                    var fam = match.Groups["fam"].Success ? match.Groups["fam"].Value : null;
+                    var size = match.Groups["size"].Success ? match.Groups["size"].Value : null;
+                    var style = match.Groups["style"].Success ? match.Groups["style"].Value : null;
+
+                    // Effect Parameters
+                    var ef_name = match.Groups["ef_name"].Success ? match.Groups["ef_name"].Value : null;
+                    var ef_param = match.Groups["ef_param"].Success ? match.Groups["ef_param"].Value : null;
+
+                    var body = match.Groups["body"].Value;
+
+                    // Instantiate Text Color
+                    int? r;
+                    int? g;
+                    int? b;
+                    int? a = (tc_a != null) ? Convert.ToInt32(tc_a) : null;
+                    if (tc_hex != null)
                     {
-                        var match = HeadRegex().Match(head);
-                        var tcGroup = match.Groups.GetValueOrDefault("tc");
-                        var bcGroup = match.Groups.GetValueOrDefault("bc");
-                        var ftGroup = match.Groups.GetValueOrDefault("ft");
-                        var efGroup = match.Groups.GetValueOrDefault("ef");
-
-                        tc = (tcGroup != null) ? tcGroup.Value : tc;
-                        bc = (bcGroup != null) ? bcGroup.Value : bc;
-                        ft = (ftGroup != null) ? ftGroup.Value : ft;
-                        ef = (efGroup != null) ? efGroup.Value : ef;
+                        (r, g, b) = HexToRGB(tc_hex);
                     }
-                    var textColor = BuildColor(tc);
-                    var bgColor = BuildColor(bc);
-                    var font = BuildFont(ft);
-                    var effect = BuildEffect(ef);
-                    var blockObj = new TextBlock(body, textColor, bgColor, font, effect);
-                    textBlocks.Add(blockObj);
+                    else
+                    {
+                        r = (tc_r != null) ? Convert.ToInt32(tc_r) : null;
+                        g = (tc_g != null) ? Convert.ToInt32(tc_g) : null;
+                        b = (tc_b != null) ? Convert.ToInt32(tc_b) : null;
+                    }
+                    var tc = new CSColor(r, g, b, a);
+
+                    // Instantiate Background Color
+                    a = (bc_a != null) ? Convert.ToInt32(bc_a) : null;
+                    if (bc_hex != null)
+                    {
+                        (r, g, b) = HexToRGB(bc_hex);
+                    }
+                    else
+                    {
+                        r = (bc_r != null) ? Convert.ToInt32(bc_r) : null;
+                        g = (bc_g != null) ? Convert.ToInt32(bc_g) : null;
+                        b = (bc_b != null) ? Convert.ToInt32(bc_b) : null;
+                    }
+                    var bc = new CSColor(r, g, b, a);
+
+                    // Instantiate Font
+                    if (Families == null)
+                    {
+                        Families = [];
+                        foreach (var family in FontFamily.Families)
+                        {
+                            Families.Add(family.Name, family);
+                        }
+                    }
+
+                    FontFamily? fontFam = null;
+                    if (fam != null && Families.TryGetValue(fam, out FontFamily? value))
+                    {
+                        fontFam = value;
+                    }
+                    int? fontSize = (size != null) ? Convert.ToInt32(size) : null;
+                    var styles = ExtractStyles(style);
+                    var font = new CSFont(fontFam, fontSize, styles);
+
+                    // Instantiate Effect
+                    var effect = ExtractEffect(ef_name, ef_param);
+
+                    var block = new TextBlock(body, tc, bc, font, effect);
+                    textBlocks.Add(block);
                 }
             }
             return textBlocks;
         }
 
-        static CSFont BuildFont(string text)
+        static List<FontStyle>? ExtractStyles(string? text)
         {
-            var font = new CSFont();
-            if (FontRegex().IsMatch(text))
+            List<FontStyle>? styles = null;
+            if (text != null)
             {
-                var match = FontRegex().Match(text);
-                var fmlyGroup = match.Groups.GetValueOrDefault("fmly");
-                var sizeGroup = match.Groups.GetValueOrDefault("size");
-                var stylGroup = match.Groups.GetValueOrDefault("styl");
+                if (StyleRegex().IsMatch(text))
+                {
+                    var matches = StyleRegex().Matches(text);
+                    foreach (Match match in matches)
+                    {
+                        var styleName = match.Groups["style"].Value;
+                        if (Styles.TryGetValue(styleName, out FontStyle value))
+                        {
+                            styles ??= [];
+                            styles.Add(value);
+                        }
+                    }
+                }
             }
-            return font;
+            return styles;
         }
 
-        static Effect BuildEffect(string text)
+        static Effect ExtractEffect(string? ef_name, string? ef_param)
         {
-            var effect = new NoEffect();
+            Effect effect = new NoEffect();
+
+            if (Effects == null)
+            {
+                Effects = [];
+                var efSubclasses = GetInheritedClasses(typeof(Effect));
+                foreach (var efSubclass in efSubclasses)
+                {
+                    Effects.Add(efSubclass.Name, efSubclass);
+                }
+            }
+
+            dynamic? param = null;
+            if (ef_name != null && Effects.TryGetValue(ef_name, out Type value))
+            {
+                effect = Activator.CreateInstance(value) as Effect;
+                if (value == typeof(TypeWriter))
+                {
+                    param = (ef_param != null) ? Convert.ToInt32(ef_param) : null;
+                    effect.SetParam(param);
+                }
+            }
             return effect;
         }
 
-        static CSColor BuildColor(string text)
+        static List<Type> GetInheritedClasses(Type baseType)
         {
-            var color = new CSColor();
-            if (ColorRegex().IsMatch(text))
-            {
-                var match = ColorRegex().Match(text);
-                var rgbGroup = match.Groups.GetValueOrDefault("rgb");
-                var alphaGroup = match.Groups.GetValueOrDefault("alpha");
-
-                var (r, g, b, a) = (0, 0, 0, 255);
-                if (rgbGroup != null)
-                {
-                    (r, g, b) = BuildRGB(rgbGroup.Value);
-                }
-                if (alphaGroup != null)
-                {
-                    a = Convert.ToInt32(alphaGroup.Value);
-                }
-                color = new CSColor(r, g, b, a);
-            }
-            return color;
+            return [.. Assembly.GetAssembly(baseType).GetTypes().Where(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(baseType))];
         }
-
-        static (int r, int g, int b) BuildRGB(string text)
-        {
-            var (r, g, b) = (0, 0, 0);
-            if (HexRegex().IsMatch(text))
-            {
-                (r, g, b) = HexToRGB(text);
-            }
-            else
-            {
-                if (RGBRegex().IsMatch(text))
-                {
-                    var match = RGBRegex().Match(text);
-                    r = Convert.ToInt32(match.Groups.GetValueOrDefault("r").Value);
-                    g = Convert.ToInt32(match.Groups.GetValueOrDefault("g").Value);
-                    b = Convert.ToInt32(match.Groups.GetValueOrDefault("b").Value);
-                }
-            }
-            return (r, g, b);
-        }
-
+        
         public static (int r, int g, int b) HexToRGB(string hex)
         {
             if (HexRegex().IsMatch(hex))
