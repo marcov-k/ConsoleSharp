@@ -619,6 +619,20 @@ namespace ConsoleSharp
         {
             return [.. Assembly.GetAssembly(baseType).GetTypes().Where(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(baseType))];
         }
+
+        public static void AddEffectSubclass(Type newEffect)
+        {
+            if (Effects == null)
+            {
+                Effects = [];
+                var efSubclasses = GetInheritedClasses(typeof(Effect));
+                foreach (var efSubclass in efSubclasses)
+                {
+                    Effects.Add(efSubclass.Name, efSubclass);
+                }
+            }
+            else Effects.Add(newEffect.Name, newEffect);
+        }
         
         public static (int r, int g, int b) HexToRGB(string hex)
         {
