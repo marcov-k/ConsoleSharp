@@ -1,7 +1,9 @@
 using ConsoleSharp;
+using static ConsoleSharp.CSDisplay;
 
 var display = new CSDisplay(dimensions: new Size(1920, 1080));
-display.Print(@"\ln\tb<tc: 255, 0, 0, 255; bc: 0, 0, 255, 255; ft: 100, (Bold); ef: TypeWriter, 100;>Embedded styling test.../tb/ln");
+string userInput = await display.ReadLine(prompt: @"Enter an input...");
+display.Print(userInput);
 
 namespace ConsoleSharp
 {
@@ -10,32 +12,39 @@ namespace ConsoleSharp
     using System.Windows.Forms;
     using System.Reflection;
     using static CSDisplay;
+    using System.Threading.Tasks;
 
     public class CSDisplay
     {
         public static Size DefaultDims { get; set; } = new Size(500, 500);
-        public Window Window { get; private set; } = new Window(Colors.Black);
+        public Window Window { get; private set; }
         readonly Thread UIThread;
 
-        public string ReadLine(Line prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
+        public async Task<string> ReadLine(Line prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
         {
             Print(prompt);
-            return ReadLineImpl(textColor, bgColor, font);
+            return await ReadLineImpl(textColor, bgColor, font);
         }
 
-        public string ReadLine(List<TextBlock> prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
+        public async Task<string> ReadLine(List<TextBlock> prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
         {
             Print(prompt);
-            return ReadLineImpl(textColor, bgColor, font);
+            return await ReadLineImpl(textColor, bgColor, font);
         }
 
-        public string ReadLine(TextBlock prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
+        public async Task<string> ReadLine(TextBlock prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
         {
             Print(prompt);
-            return ReadLineImpl(textColor, bgColor, font);
+            return await ReadLineImpl(textColor, bgColor, font);
         }
 
-        private string ReadLineImpl(CSColor? textColor, CSColor? bgColor, CSFont? font)
+        public async Task<string> ReadLine(string prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
+        {
+            Print(prompt);
+            return await ReadLineImpl(textColor, bgColor, font);
+        }
+
+        private async Task<string> ReadLineImpl(CSColor? textColor, CSColor? bgColor, CSFont? font)
         {
             textColor ??= Colors.White;
             bgColor ??= Window.BGColor;
@@ -47,7 +56,7 @@ namespace ConsoleSharp
                 pos = new Point(0, prevField.Location.Y + prevField.GetPreferredSize(new Size(prevField.Width, 0)).Height);
             }
             var field = AddInputField(pos, textColor, bgColor, font);
-            return InputHandler.CaptureInput(field);
+            return await InputHandler.CaptureInput(field);
         }
 
         public void Print(List<Line> lines)
@@ -178,10 +187,11 @@ namespace ConsoleSharp
             Size dims = dimensions ?? DefaultDims;
             Point pos = position ?? new Point(Screen.PrimaryScreen.Bounds.Width / 2 - dims.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2 - dims.Height / 2);
             bgColor = bgColor ?? Colors.Black;
+            Window = new Window(display: this, bgColor); // Prevents warning due to Window not technically being assigned in the constructor.
 
             UIThread = new Thread(() =>
             {
-                Window = new Window(bgColor);
+                Window = new Window(display: this, bgColor);
                 Window.HandleCreated += (_, __) => formReady.Set();
                 Window.StartPosition = FormStartPosition.Manual;
                 Window.AutoScroll = true;
@@ -197,12 +207,62 @@ namespace ConsoleSharp
             formReady.WaitOne();
         }
 
+        public void KeyPressed(KeyPressEventArgs e) { InputHandler.KeyPressed(e); }
+
         private static class InputHandler
         {
-            public static string CaptureInput(InputField field)
+            static bool Capturing = false;
+            private static readonly object _lock = new object();
+            static InputField? CapturingField;
+
+            public static async Task<string> CaptureInput(InputField field)
             {
-                string input = "";
-                return input;
+                CapturingField = field;
+                Capturing = true;
+                CapturingField.Invoke(() =>
+                {
+                    CapturingField.Text = string.Empty;
+                });
+                lock (_lock)
+                {
+                    while (Capturing)
+                    {
+                        Monitor.Wait(_lock);
+                    }
+                }
+                return CapturingField.Text;
+            }
+
+            public static void KeyPressed(KeyPressEventArgs e)
+            {
+                if (Capturing)
+                {
+                    if (e.KeyChar == (char)Keys.Enter)
+                    {
+                        lock (_lock)
+                        {
+                            Capturing = false;
+                            Monitor.Pulse(_lock);
+                        }
+                    }
+                    else if (e.KeyChar == (char)Keys.Back)
+                    {
+                        if (CapturingField?.Text.Length > 0)
+                        {
+                            CapturingField?.BeginInvoke(() =>
+                            {
+                                CapturingField.Text = CapturingField.Text.Remove(CapturingField.Text.Length - 1);
+                            });
+                        }
+                    }
+                    else
+                    {
+                        CapturingField?.BeginInvoke(() =>
+                        {
+                            CapturingField.Text += e.KeyChar;
+                        });
+                    }
+                }
             }
         }
         public class TextCont
@@ -486,11 +546,26 @@ namespace ConsoleSharp
         }
     }
 
-    public class Window(CSColor bgColor) : Form()
+    public class Window : Form
     {
-        public readonly CSColor BGColor = bgColor;
+        private readonly CSDisplay Display;
+        public readonly CSColor BGColor;
         public List<Label> Labels { get; private set; } = new List<Label>();
         public Audio Audio { get; private set; } = new Audio();
+
+        private void WindowKeyPress(object? sender, KeyPressEventArgs e)
+        {
+            e.Handled = true;
+            Display.KeyPressed(e);
+        }
+
+        public Window(CSDisplay display, CSColor bgColor) : base()
+        {
+            Display = display;
+            BGColor = bgColor;
+            KeyPreview = true;
+            KeyPress += new KeyPressEventHandler(WindowKeyPress);
+        }
     }
 
     public class InputField : Label
