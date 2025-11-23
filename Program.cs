@@ -533,6 +533,7 @@ namespace ConsoleSharp
                         g = (tc_g != null) ? Convert.ToInt32(tc_g) : null;
                         b = (tc_b != null) ? Convert.ToInt32(tc_b) : null;
                     }
+                    if ((r, g, b) == (null, null, null)) (r, g, b) = (255, 255, 255);
                     var tc = new CSColor(r, g, b, a);
 
                     // Instantiate Background Color
