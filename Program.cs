@@ -122,7 +122,7 @@ namespace ConsoleSharp
             Window.BeginInvoke(() => Window.Audio.Play(file));
         }
 
-        public Label AddLabel(Point? pos = null, int? fontSize = null)
+        private Label AddLabel(Point? pos = null, int? fontSize = null)
         {
             CSFont font = new CSFont(fontSize: fontSize, fontStyle: null);
             var label = new Label();
