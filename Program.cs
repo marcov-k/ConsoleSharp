@@ -245,21 +245,11 @@ namespace ConsoleSharp
                             Monitor.Pulse(_lock);
                         }
                     }
-                    else if (e.KeyChar == (char)Keys.Back)
-                    {
-                        if (CapturingField?.Text.Length > 0)
-                        {
-                            CapturingField?.BeginInvoke(() =>
-                            {
-                                CapturingField.Text = CapturingField.Text.Remove(CapturingField.Text.Length - 1);
-                            });
-                        }
-                    }
                     else
                     {
                         CapturingField?.BeginInvoke(() =>
                         {
-                            CapturingField.Text += e.KeyChar;
+                            CapturingField.HandleKeyPress(e);
                         });
                     }
                 }
@@ -570,7 +560,14 @@ namespace ConsoleSharp
 
     public class InputField : Label
     {
-        
+        public void HandleKeyPress(KeyPressEventArgs e)
+        {
+            BeginInvoke(() =>
+            {
+                if (e.KeyChar == (char)Keys.Back) Text = Text.Remove(Text.Length - 1);
+                else Text += e.KeyChar;
+            });
+        }
     }
 
     public static partial class Utils
