@@ -118,7 +118,7 @@ namespace ConsoleSharp
                 var textSize = TextRenderer.MeasureText(text: fillString, font: font.FontData);
                 if (textSize.Width > sizingLabel.Width)
                 {
-                    fillString.Remove(fillString.Length - 1);
+                    fillString = fillString.Remove(fillString.Length - 1);
                     maxxed = true;
                 }
             }
