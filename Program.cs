@@ -9,12 +9,36 @@ namespace ConsoleSharp
     using System.Text.RegularExpressions;
     using System.Windows.Forms;
     using System.Reflection;
+    using static Display;
 
     public class Display
     {
         public static Size DefaultDims { get; set; } = new Size(500, 500);
         public Window Window { get; private set; } = new Window();
         readonly Thread UIThread;
+
+        public string ReadLine(Line prompt)
+        {
+            Print(prompt);
+            return ReadLineImpl();
+        }
+
+        public string ReadLine(List<TextBlock> prompt)
+        {
+            Print(prompt);
+            return ReadLineImpl();
+        }
+
+        public string ReadLine(TextBlock prompt)
+        {
+            Print(prompt);
+            return ReadLineImpl();
+        }
+
+        private string ReadLineImpl()
+        {
+            
+        }
 
         public void Print(List<Line> lines)
         {
@@ -140,284 +164,292 @@ namespace ConsoleSharp
             UIThread.Start();
             formReady.WaitOne();
         }
-    }
 
-    public class TextCont
-    {
-        public virtual void PrintText(Display display, Label? field = null)
+        private static class InputHandler
         {
-            throw new NotImplementedException();
-        }
-    }
-
-    public class Line : TextCont
-    {
-        public List<TextBlock> TextBlocks { get; set; } = new List<TextBlock>();
-
-        public override void PrintText(Display display, Label? field = null)
-        {
-            Point? pos = null;
-            if (display.Window.Labels.Count > 0)
+            public static string CaptureInput(InputField field)
             {
-                var prevField = display.Window.Labels.Last();
-                pos = new Point(0, prevField.Location.Y + prevField.GetPreferredSize(new Size(prevField.Width, 0)).Height);
+                string input = "";
+                return input;
             }
-            var firstField = display.AddLabel(pos);
-            bool firstText = true;
-            foreach (var text in TextBlocks)
+        }
+        public class TextCont
+        {
+            public virtual void PrintText(Display display, Label? field = null)
             {
-                if (firstText)
-                {
-                    text.PrintText(display, firstField);
-                    firstText = false;
-                }
-                else
-                {
-                    text.PrintText(display);
-                }
+                throw new NotImplementedException();
             }
         }
 
-        public Line() { }
-
-        public Line(TextBlock text)
+        public class Line : TextCont
         {
-            TextBlocks.Add(text);
-        }
+            public List<TextBlock> TextBlocks { get; set; } = new List<TextBlock>();
 
-        public Line(List<TextBlock> textBlocks)
-        {
-            TextBlocks.AddRange(textBlocks);
-        }
-    }
-
-    public class TextBlock : TextCont
-    {
-        public static Effect DefaultEffect { get; set; } = new NoEffect();
-        public string Text { get; set; } = "";
-        public CSColor TextColor { get; set; } = Colors.White;
-        public CSColor BGColor { get; set; } = Colors.Black;
-        public CSFont Font { get; set; } = new CSFont();
-        public Effect Effect { get; set; }
-
-        public override void PrintText(Display display, Label? field = null)
-        {
-            if (field == null)
+            public override void PrintText(Display display, Label? field = null)
             {
                 Point? pos = null;
                 if (display.Window.Labels.Count > 0)
                 {
                     var prevField = display.Window.Labels.Last();
-                    pos = new Point(prevField.Location.X + prevField.Width, prevField.Location.Y);
+                    pos = new Point(0, prevField.Location.Y + prevField.GetPreferredSize(new Size(prevField.Width, 0)).Height);
                 }
-                field = display.AddLabel(pos);
-            }
-            field.BeginInvoke(() =>
-            {
-                field.BackColor = BGColor.ColorData;
-                field.ForeColor = TextColor.ColorData;
-                field.Font = Font.FontData;
-            });
-            Effect.PrintEffect(Text, field);
-        }
-
-        public TextBlock(string? text = null, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, Effect? effect = null)
-        {
-            Text = text ?? Text;
-            TextColor = textColor ?? TextColor;
-            BGColor = bgColor ?? BGColor;
-            Font = font ?? Font;
-            Effect = effect ?? DefaultEffect;
-        }
-    }
-
-    public class CSColor
-    {
-        public int R
-        {
-            get { return _r; }
-            set
-            {
-                if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "R", message: $"{value} is outside the range. Value must be between 0 and 255");
-                else
+                var firstField = display.AddLabel(pos);
+                bool firstText = true;
+                foreach (var text in TextBlocks)
                 {
-                    _r = value;
-                    UpdateColorData();
+                    if (firstText)
+                    {
+                        text.PrintText(display, firstField);
+                        firstText = false;
+                    }
+                    else
+                    {
+                        text.PrintText(display);
+                    }
                 }
             }
-        }
-        public int G
-        {
-            get { return _g; }
-            set
+
+            public Line() { }
+
+            public Line(TextBlock text)
             {
-                if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "G", message: $"{value} is outside the range. Value must be between 0 and 255");
-                else
+                TextBlocks.Add(text);
+            }
+
+            public Line(List<TextBlock> textBlocks)
+            {
+                TextBlocks.AddRange(textBlocks);
+            }
+        }
+
+        public class TextBlock : TextCont
+        {
+            public static Effect DefaultEffect { get; set; } = new NoEffect();
+            public string Text { get; set; } = "";
+            public CSColor TextColor { get; set; } = Colors.White;
+            public CSColor BGColor { get; set; } = Colors.Black;
+            public CSFont Font { get; set; } = new CSFont();
+            public Effect Effect { get; set; }
+
+            public override void PrintText(Display display, Label? field = null)
+            {
+                if (field == null)
                 {
-                    _g = value;
-                    UpdateColorData();
+                    Point? pos = null;
+                    if (display.Window.Labels.Count > 0)
+                    {
+                        var prevField = display.Window.Labels.Last();
+                        pos = new Point(prevField.Location.X + prevField.Width, prevField.Location.Y);
+                    }
+                    field = display.AddLabel(pos);
                 }
-            }
-        }
-        public int B
-        {
-            get { return _b; }
-            set
-            {
-                if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "B", message: $"{value} is outside the range. Value must be between 0 and 255");
-                else
+                field.BeginInvoke(() =>
                 {
-                    _b = value;
-                    UpdateColorData();
-                }
+                    field.BackColor = BGColor.ColorData;
+                    field.ForeColor = TextColor.ColorData;
+                    field.Font = Font.FontData;
+                });
+                Effect.PrintEffect(Text, field);
+            }
+
+            public TextBlock(string? text = null, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, Effect? effect = null)
+            {
+                Text = text ?? Text;
+                TextColor = textColor ?? TextColor;
+                BGColor = bgColor ?? BGColor;
+                Font = font ?? Font;
+                Effect = effect ?? DefaultEffect;
             }
         }
-        public int A
+
+        public class CSColor
         {
-            get { return _a; }
-            set
+            public int R
             {
-                if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "A", message: $"{value} is outside the range. Value must be between 0 and 255");
-                else
+                get { return _r; }
+                set
                 {
-                    _a = value;
-                    UpdateColorData();
+                    if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "R", message: $"{value} is outside the range. Value must be between 0 and 255");
+                    else
+                    {
+                        _r = value;
+                        UpdateColorData();
+                    }
                 }
             }
-        }
-
-        private int _r = 0;
-        private int _g = 0;
-        private int _b = 0;
-        private int _a = 0;
-
-        public Color ColorData { get; private set; }
-
-        void UpdateColorData()
-        {
-            ColorData = Color.FromArgb(_a, _r, _g, _b);
-        }
-
-        public CSColor Clone()
-        {
-            return new CSColor(_r, _g, _b, _a);
-        }
-
-        public CSColor()
-        {
-            (R, G, B, A) = (0, 0, 0, 255);
-        }
-
-        public CSColor(int? r = null, int? g = null, int? b = null, int? a = null)
-        {
-            R = (r != null) ? r.Value : 0;
-            G = (g != null) ? g.Value : 0;
-            B = (b != null) ? b.Value : 0;
-            A = (a != null) ? a.Value : 255;
-        }
-
-        public CSColor(string? hex = null, int? a = null)
-        {
-            hex ??= "000000";
-            (R, G, B) = Utils.HexToRGB(hex);
-            A = (a != null) ? a.Value : 255;
-        }
-    }
-
-    public class CSFont
-    {
-        public static FontFamily DefaultFontFamily { get; set; } = FontFamily.GenericSansSerif;
-        public static int DefaultFontSize { get; set; } = 12;
-        public static FontStyle DefaultFontStyle { get; set; } = FontStyle.Regular;
-        public Font FontData { get; private set; }
-
-        public CSFont()
-        {
-            FontData = new Font(DefaultFontFamily, DefaultFontSize, DefaultFontStyle);
-        }
-
-        public CSFont(FontFamily? fontFamily = null, int? fontSize = null)
-        {
-            FontFamily family = fontFamily ?? DefaultFontFamily;
-            int size = fontSize ?? DefaultFontSize;
-            FontData = new Font(family, size);
-        }
-
-        public CSFont(FontFamily? fontFamily = null, int? fontSize = null, FontStyle? fontStyle = null) : this(fontFamily, fontSize)
-        {
-            FontStyle style = fontStyle ?? DefaultFontStyle;
-            FontData = new Font(FontData.FontFamily, FontData.SizeInPoints, style);
-        }
-
-        public CSFont(FontFamily? fontFamily = null, int? fontSize = null, List<FontStyle>? fontStyles = null) : this(fontFamily, fontSize)
-        {
-            FontStyle style = DefaultFontStyle;
-            if (fontStyles != null)
+            public int G
             {
-                style = FontStyle.Regular;
-                foreach (var fontStyle in fontStyles)
+                get { return _g; }
+                set
                 {
-                    style |= fontStyle;
+                    if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "G", message: $"{value} is outside the range. Value must be between 0 and 255");
+                    else
+                    {
+                        _g = value;
+                        UpdateColorData();
+                    }
                 }
             }
-            FontData = new Font(FontData.FontFamily, FontData.SizeInPoints, style);
-        }
-    }
-
-    public class Effect
-    {
-        public Type? ParamType { get; private set; } = null;
-
-        public virtual void PrintEffect(string text, Label field)
-        {
-            throw new NotImplementedException();
-        }
-
-        public virtual void SetParam(dynamic newParam)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    public class NoEffect : Effect
-    {
-        public override void PrintEffect(string text, Label field)
-        {
-            field.BeginInvoke(() => field.Text += text);
-        }
-    }
-
-    public class TypeWriter : Effect
-    {
-        public int Delay { get; set; }
-        private readonly int DefaultDelay = 200;
-        public new Type? ParamType { get; private set; }
-
-        public override void PrintEffect(string text, Label field)
-        {
-            var chars = Utils.ParseString(text);
-            foreach (var chara in chars)
+            public int B
             {
-                field.BeginInvoke(() => field.Text += chara);
-                Thread.Sleep(Delay);
+                get { return _b; }
+                set
+                {
+                    if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "B", message: $"{value} is outside the range. Value must be between 0 and 255");
+                    else
+                    {
+                        _b = value;
+                        UpdateColorData();
+                    }
+                }
+            }
+            public int A
+            {
+                get { return _a; }
+                set
+                {
+                    if (value > 255 || value < 0) throw new ArgumentOutOfRangeException(paramName: "A", message: $"{value} is outside the range. Value must be between 0 and 255");
+                    else
+                    {
+                        _a = value;
+                        UpdateColorData();
+                    }
+                }
+            }
+
+            private int _r = 0;
+            private int _g = 0;
+            private int _b = 0;
+            private int _a = 0;
+
+            public Color ColorData { get; private set; }
+
+            void UpdateColorData()
+            {
+                ColorData = Color.FromArgb(_a, _r, _g, _b);
+            }
+
+            public CSColor Clone()
+            {
+                return new CSColor(_r, _g, _b, _a);
+            }
+
+            public CSColor()
+            {
+                (R, G, B, A) = (0, 0, 0, 255);
+            }
+
+            public CSColor(int? r = null, int? g = null, int? b = null, int? a = null)
+            {
+                R = (r != null) ? r.Value : 0;
+                G = (g != null) ? g.Value : 0;
+                B = (b != null) ? b.Value : 0;
+                A = (a != null) ? a.Value : 255;
+            }
+
+            public CSColor(string? hex = null, int? a = null)
+            {
+                hex ??= "000000";
+                (R, G, B) = Utils.HexToRGB(hex);
+                A = (a != null) ? a.Value : 255;
             }
         }
 
-        public override void SetParam(dynamic newParam)
+        public class CSFont
         {
-            Delay = newParam;
+            public static FontFamily DefaultFontFamily { get; set; } = FontFamily.GenericSansSerif;
+            public static int DefaultFontSize { get; set; } = 12;
+            public static FontStyle DefaultFontStyle { get; set; } = FontStyle.Regular;
+            public Font FontData { get; private set; }
+
+            public CSFont()
+            {
+                FontData = new Font(DefaultFontFamily, DefaultFontSize, DefaultFontStyle);
+            }
+
+            public CSFont(FontFamily? fontFamily = null, int? fontSize = null)
+            {
+                FontFamily family = fontFamily ?? DefaultFontFamily;
+                int size = fontSize ?? DefaultFontSize;
+                FontData = new Font(family, size);
+            }
+
+            public CSFont(FontFamily? fontFamily = null, int? fontSize = null, FontStyle? fontStyle = null) : this(fontFamily, fontSize)
+            {
+                FontStyle style = fontStyle ?? DefaultFontStyle;
+                FontData = new Font(FontData.FontFamily, FontData.SizeInPoints, style);
+            }
+
+            public CSFont(FontFamily? fontFamily = null, int? fontSize = null, List<FontStyle>? fontStyles = null) : this(fontFamily, fontSize)
+            {
+                FontStyle style = DefaultFontStyle;
+                if (fontStyles != null)
+                {
+                    style = FontStyle.Regular;
+                    foreach (var fontStyle in fontStyles)
+                    {
+                        style |= fontStyle;
+                    }
+                }
+                FontData = new Font(FontData.FontFamily, FontData.SizeInPoints, style);
+            }
         }
 
-        public TypeWriter()
+        public class Effect
         {
-            Delay = DefaultDelay;
-            ParamType = Delay.GetType();
+            public Type? ParamType { get; private set; } = null;
+
+            public virtual void PrintEffect(string text, Label field)
+            {
+                throw new NotImplementedException();
+            }
+
+            public virtual void SetParam(dynamic newParam)
+            {
+                throw new NotImplementedException();
+            }
         }
 
-        public TypeWriter(int delay = 500)
+        public class NoEffect : Effect
         {
-            Delay = delay;
-            ParamType = Delay.GetType();
+            public override void PrintEffect(string text, Label field)
+            {
+                field.BeginInvoke(() => field.Text += text);
+            }
+        }
+
+        public class TypeWriter : Effect
+        {
+            public int Delay { get; set; }
+            private readonly int DefaultDelay = 200;
+            public new Type? ParamType { get; private set; }
+
+            public override void PrintEffect(string text, Label field)
+            {
+                var chars = Utils.ParseString(text);
+                foreach (var chara in chars)
+                {
+                    field.BeginInvoke(() => field.Text += chara);
+                    Thread.Sleep(Delay);
+                }
+            }
+
+            public override void SetParam(dynamic newParam)
+            {
+                Delay = newParam;
+            }
+
+            public TypeWriter()
+            {
+                Delay = DefaultDelay;
+                ParamType = Delay.GetType();
+            }
+
+            public TypeWriter(int delay = 500)
+            {
+                Delay = delay;
+                ParamType = Delay.GetType();
+            }
         }
     }
 
@@ -425,6 +457,11 @@ namespace ConsoleSharp
     {
         public List<Label> Labels { get; private set; } = new List<Label>();
         public Audio Audio { get; private set; } = new Audio();
+    }
+
+    public class InputField : Label
+    {
+        
     }
 
     public static partial class Utils
@@ -681,49 +718,6 @@ namespace ConsoleSharp
                 chars.Add(chara.ToString());
             }
             return chars.ToList();
-        }
-
-        private class TBDataCont
-        {
-            List<TBStringData> Data = new List<TBStringData>();
-
-            public TBStringData? GetData(int index)
-            {
-                var data = Data.Find((x) => x.Index == index);
-                return data;
-            }
-
-            public int GetMaxIndex()
-            {
-                var max = -1;
-                foreach (var tb in Data)
-                {
-                    if (tb.Index > max) max = tb.Index;
-                }
-                return max;
-            }
-
-            public void AddData(TBStringData data)
-            {
-                Data.Add(data);
-            }
-
-            public void AddData(List<TBStringData> data)
-            {
-                Data.AddRange(data);
-            }
-
-            public TBDataCont(List<TBStringData> data)
-            {
-                Data.AddRange(data);
-            }
-        }
-
-        private class TBStringData(int index, string head, string body)
-        {
-            public int Index { get; private set; } = index;
-            public string Head { get; private set; } = head;
-            public string Body { get; private set; } = body;
         }
     }
 
