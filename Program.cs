@@ -1,12 +1,7 @@
 using ConsoleSharp;
 
 var display = new Display(dimensions: new Size(1920, 1080));
-List<Line> lines = [new Line(new TextBlock(text: "Hello World", font: new CSFont(fontStyles: [FontStyle.Underline, FontStyle.Strikeout]), effect: new TypeWriter(delay: 100))), 
-    new Line(new TextBlock(text: "Goodbye World", textColor: new CSColor(0, 255, 0), font: new CSFont(fontSize: 20, fontStyle: FontStyle.Bold), effect: new TypeWriter(delay: 100)))];
-display.Print(lines);
-display.PrintDivider();
-display.Print(20);
-display.Print(lines);
+display.Print(@"\ln\tb<tc: 255, 0, 0, 255; bc: 0, 0, 255, 255; ft: 100, (Bold); ef: TypeWriter, 100;>Embedded styling test.../tb/ln");
 
 namespace ConsoleSharp
 {
@@ -49,7 +44,11 @@ namespace ConsoleSharp
 
         public void Print(string text)
         {
-
+            var lines = Utils.BuildFromString(text);
+            foreach (var line in lines)
+            {
+                line.PrintText(display: this);
+            }
         }
 
         public void Print(int? fontSize = null)
@@ -388,10 +387,11 @@ namespace ConsoleSharp
         }
     }
 
-    public class TypeWriter(int delay = 500) : Effect
+    public class TypeWriter : Effect
     {
-        public int Delay { get; set; } = delay;
-        public new Type? ParamType { get; private set; } = delay.GetType();
+        public int Delay { get; set; }
+        private readonly int DefaultDelay = 200;
+        public new Type? ParamType { get; private set; }
 
         public override void PrintEffect(string text, Label field)
         {
@@ -406,6 +406,18 @@ namespace ConsoleSharp
         public override void SetParam(dynamic newParam)
         {
             Delay = newParam;
+        }
+
+        public TypeWriter()
+        {
+            Delay = DefaultDelay;
+            ParamType = Delay.GetType();
+        }
+
+        public TypeWriter(int delay = 500)
+        {
+            Delay = delay;
+            ParamType = Delay.GetType();
         }
     }
 
