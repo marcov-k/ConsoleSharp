@@ -17,27 +17,37 @@ namespace ConsoleSharp
         public Window Window { get; private set; } = new Window();
         readonly Thread UIThread;
 
-        public string ReadLine(Line prompt)
+        public string ReadLine(Line prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
         {
             Print(prompt);
-            return ReadLineImpl();
+            return ReadLineImpl(textColor, bgColor, font);
         }
 
-        public string ReadLine(List<TextBlock> prompt)
+        public string ReadLine(List<TextBlock> prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
         {
             Print(prompt);
-            return ReadLineImpl();
+            return ReadLineImpl(textColor, bgColor, font);
         }
 
-        public string ReadLine(TextBlock prompt)
+        public string ReadLine(TextBlock prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
         {
             Print(prompt);
-            return ReadLineImpl();
+            return ReadLineImpl(textColor, bgColor, font);
         }
 
-        private string ReadLineImpl()
+        private string ReadLineImpl(CSColor? textColor, CSColor? bgColor, CSFont? font)
         {
-            
+            textColor ??= Colors.White;
+            bgColor ??= Colors.Black;
+            font ??= new CSFont();
+            Point? pos = null;
+            if (Window.Labels.Count > 0)
+            {
+                var prevField = Window.Labels.Last();
+                pos = new Point(0, prevField.Location.Y + prevField.GetPreferredSize(new Size(prevField.Width, 0)).Height);
+            }
+            var field = AddInputField(pos, textColor, bgColor, font);
+            return InputHandler.CaptureInput(field);
         }
 
         public void Print(List<Line> lines)
@@ -138,6 +148,28 @@ namespace ConsoleSharp
                 Window.Controls.Add(label);
             });
             return Window.Labels.Last();
+        }
+
+        private InputField AddInputField(Point? pos = null, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
+        {
+            textColor ??= Colors.White;
+            bgColor ??= Colors.Black;
+            font ??= new CSFont();
+            var field = new InputField();
+            field.AutoSize = true;
+            if (pos != null)
+            {
+                field.Location = pos.Value;
+            }
+            field.Font = font.FontData;
+            field.ForeColor = textColor.ColorData;
+            field.BackColor = bgColor.ColorData;
+            Window.Invoke(() =>
+            {
+                Window.Labels.Add(field);
+                Window.Controls.Add(field);
+            });
+            return Window.Labels.Last() as InputField;
         }
 
         public Display(string name = "New Display", Size? dimensions = null, Point? position = null, CSColor? bgColor = null)
