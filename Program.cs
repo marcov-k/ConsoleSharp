@@ -1,6 +1,6 @@
 using ConsoleSharp;
 
-var display = new Display(dimensions: new Size(1920, 1080));
+var display = new CSDisplay(dimensions: new Size(1920, 1080));
 display.Print(@"\ln\tb<tc: 255, 0, 0, 255; bc: 0, 0, 255, 255; ft: 100, (Bold); ef: TypeWriter, 100;>Embedded styling test.../tb/ln");
 
 namespace ConsoleSharp
@@ -9,12 +9,12 @@ namespace ConsoleSharp
     using System.Text.RegularExpressions;
     using System.Windows.Forms;
     using System.Reflection;
-    using static Display;
+    using static CSDisplay;
 
-    public class Display
+    public class CSDisplay
     {
         public static Size DefaultDims { get; set; } = new Size(500, 500);
-        public Window Window { get; private set; } = new Window();
+        public Window Window { get; private set; } = new Window(Colors.Black);
         readonly Thread UIThread;
 
         public string ReadLine(Line prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
@@ -38,7 +38,7 @@ namespace ConsoleSharp
         private string ReadLineImpl(CSColor? textColor, CSColor? bgColor, CSFont? font)
         {
             textColor ??= Colors.White;
-            bgColor ??= Colors.Black;
+            bgColor ??= Window.BGColor;
             font ??= new CSFont();
             Point? pos = null;
             if (Window.Labels.Count > 0)
@@ -98,10 +98,10 @@ namespace ConsoleSharp
 
         public void PrintDivider(CSFont? font = null, CSColor? textColor = null, CSColor? bgColor = null, Effect? effect = null)
         {
-            font = font ?? new CSFont();
-            textColor = textColor ?? Colors.White;
-            bgColor = bgColor ?? Colors.Black;
-            effect = effect ?? new NoEffect();
+            font ??= new CSFont();
+            textColor ??= Colors.White;
+            bgColor ??= Window.BGColor;
+            effect ??= new NoEffect();
 
             var sizingLabel = new Label();
             sizingLabel.AutoSize = true;
@@ -172,7 +172,7 @@ namespace ConsoleSharp
             return Window.Labels.Last() as InputField;
         }
 
-        public Display(string name = "New Display", Size? dimensions = null, Point? position = null, CSColor? bgColor = null)
+        public CSDisplay(string name = "New Display", Size? dimensions = null, Point? position = null, CSColor? bgColor = null)
         {
             var formReady = new AutoResetEvent(false);
             Size dims = dimensions ?? DefaultDims;
@@ -181,7 +181,7 @@ namespace ConsoleSharp
 
             UIThread = new Thread(() =>
             {
-                Window = new Window();
+                Window = new Window(bgColor);
                 Window.HandleCreated += (_, __) => formReady.Set();
                 Window.StartPosition = FormStartPosition.Manual;
                 Window.AutoScroll = true;
@@ -207,7 +207,7 @@ namespace ConsoleSharp
         }
         public class TextCont
         {
-            public virtual void PrintText(Display display, Label? field = null)
+            public virtual void PrintText(CSDisplay display, Label? field = null)
             {
                 throw new NotImplementedException();
             }
@@ -217,7 +217,7 @@ namespace ConsoleSharp
         {
             public List<TextBlock> TextBlocks { get; set; } = new List<TextBlock>();
 
-            public override void PrintText(Display display, Label? field = null)
+            public override void PrintText(CSDisplay display, Label? field = null)
             {
                 Point? pos = null;
                 if (display.Window.Labels.Count > 0)
@@ -259,12 +259,13 @@ namespace ConsoleSharp
             public static Effect DefaultEffect { get; set; } = new NoEffect();
             public string Text { get; set; } = "";
             public CSColor TextColor { get; set; } = Colors.White;
-            public CSColor BGColor { get; set; } = Colors.Black;
+            public CSColor? BGColor { get; set; }
             public CSFont Font { get; set; } = new CSFont();
             public Effect Effect { get; set; }
 
-            public override void PrintText(Display display, Label? field = null)
+            public override void PrintText(CSDisplay display, Label? field = null)
             {
+                BGColor ??= display.Window.BGColor;
                 if (field == null)
                 {
                     Point? pos = null;
@@ -288,7 +289,7 @@ namespace ConsoleSharp
             {
                 Text = text ?? Text;
                 TextColor = textColor ?? TextColor;
-                BGColor = bgColor ?? BGColor;
+                BGColor = bgColor;
                 Font = font ?? Font;
                 Effect = effect ?? DefaultEffect;
             }
@@ -485,8 +486,9 @@ namespace ConsoleSharp
         }
     }
 
-    public class Window : Form
+    public class Window(CSColor bgColor) : Form()
     {
+        public readonly CSColor BGColor = bgColor;
         public List<Label> Labels { get; private set; } = new List<Label>();
         public Audio Audio { get; private set; } = new Audio();
     }
