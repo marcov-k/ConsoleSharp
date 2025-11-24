@@ -2,7 +2,7 @@ using ConsoleSharp;
 using static ConsoleSharp.CSDisplay;
 
 var display = new CSDisplay(dimensions: new Size(1920, 1080));
-string userInput = await display.ReadLine(prompt: @"Enter an input...");
+string userInput = await display.ReadLine(prompt: @"Enter an input...", font: new CSFont(fontSize: 30));
 display.Print(userInput);
 
 namespace ConsoleSharp
@@ -21,7 +21,8 @@ namespace ConsoleSharp
         readonly InputHandler inputHandler;
         readonly Thread UIThread;
         static readonly List<CSDisplay> AllInstances = new List<CSDisplay>();
-        public bool DoNotQuit { get { return _donotquit; } 
+        public bool DoNotQuit {
+            get { return _donotquit; } 
             set 
             {
                 _donotquit = value;
@@ -492,6 +493,11 @@ namespace ConsoleSharp
                 FontData = new Font(DefaultFontFamily, DefaultFontSize, DefaultFontStyle);
             }
 
+            public CSFont(int fontSize)
+            {
+                FontData = new Font(DefaultFontFamily, fontSize, DefaultFontStyle);
+            }
+
             public CSFont(FontFamily? fontFamily = null, int? fontSize = null)
             {
                 FontFamily family = fontFamily ?? DefaultFontFamily;
@@ -659,22 +665,17 @@ namespace ConsoleSharp
                 else if (pos >= Width) CursorIndex = Text.Length;
                 else
                 {
-                    int prevWidth = 0;
-                    var refLabel = new Label();
-                    refLabel.AutoSize = true;
-                    refLabel.Font = this.Font;
                     var chars = Utils.ParseString(Text);
+                    var refLabel = new Label() { AutoSize = true, Font = this.Font };
                     for (int i = 0; i < chars.Count; i++)
                     {
                         refLabel.Text += chars[i];
                         var refWidth = refLabel.PreferredWidth;
                         if (pos < refWidth)
                         {
-                            if (Math.Abs(refWidth - pos) < Math.Abs(prevWidth - pos)) CursorIndex = i + 1;
-                            else CursorIndex = i;
+                            CursorIndex = i + 1;
                             break;
                         }
-                        prevWidth = refWidth;
                     }
                 }
             }
