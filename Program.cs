@@ -17,7 +17,8 @@ namespace ConsoleSharp
     public class CSDisplay
     {
         public static Size DefaultDims { get; set; } = new Size(500, 500);
-        public Window Window { get; private set; }
+        public Window window { get; private set; }
+        readonly InputHandler inputHandler;
         readonly Thread UIThread;
 
         public async Task<string> ReadLine(Line prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
@@ -47,16 +48,16 @@ namespace ConsoleSharp
         private async Task<string> ReadLineImpl(CSColor? textColor, CSColor? bgColor, CSFont? font)
         {
             textColor ??= Colors.White;
-            bgColor ??= Window.BGColor;
+            bgColor ??= window.BGColor;
             font ??= new CSFont();
             Point? pos = null;
-            if (Window.Labels.Count > 0)
+            if (window.Labels.Count > 0)
             {
-                var prevField = Window.Labels.Last();
+                var prevField = window.Labels.Last();
                 pos = new Point(0, prevField.Location.Y + prevField.GetPreferredSize(new Size(prevField.Width, 0)).Height);
             }
             var field = AddInputField(pos, textColor, bgColor, font);
-            return await InputHandler.CaptureInput(field);
+            return await inputHandler.CaptureInput(field);
         }
 
         public void Print(List<Line> lines)
@@ -97,9 +98,9 @@ namespace ConsoleSharp
         public void Print(int? fontSize = null)
         {
             Point? pos = null;
-            if (Window.Labels.Count > 0)
+            if (window.Labels.Count > 0)
             {
-                var prevField = Window.Labels.Last();
+                var prevField = window.Labels.Last();
                 pos = new Point(0, prevField.Location.Y + prevField.Height);
             }
             AddLabel(pos, fontSize);
@@ -109,7 +110,7 @@ namespace ConsoleSharp
         {
             font ??= new CSFont();
             textColor ??= Colors.White;
-            bgColor ??= Window.BGColor;
+            bgColor ??= window.BGColor;
             effect ??= new NoEffect();
 
             var sizingLabel = new Label();
@@ -117,7 +118,7 @@ namespace ConsoleSharp
             sizingLabel.Font = font.FontData;
             sizingLabel.Text += "-";
             sizingLabel.AutoSize = false;
-            sizingLabel.Width = Window.Width;
+            sizingLabel.Width = window.Width;
 
             string fillString = "";
             bool maxxed = false;
@@ -138,7 +139,7 @@ namespace ConsoleSharp
 
         public void PlayWAV(string file)
         {
-            Window.BeginInvoke(() => Window.Audio.Play(file));
+            window.BeginInvoke(() => window.Audio.Play(file));
         }
 
         private Label AddLabel(Point? pos = null, int? fontSize = null)
@@ -151,12 +152,12 @@ namespace ConsoleSharp
                 label.Location = pos.Value;
             }
             label.Font = font.FontData;
-            Window.Invoke(() =>
+            window.Invoke(() =>
             {
-                Window.Labels.Add(label);
-                Window.Controls.Add(label);
+                window.Labels.Add(label);
+                window.Controls.Add(label);
             });
-            return Window.Labels.Last();
+            return window.Labels.Last();
         }
 
         private InputField AddInputField(Point? pos = null, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
@@ -173,33 +174,34 @@ namespace ConsoleSharp
             field.Font = font.FontData;
             field.ForeColor = textColor.ColorData;
             field.BackColor = bgColor.ColorData;
-            Window.Invoke(() =>
+            window.Invoke(() =>
             {
-                Window.Labels.Add(field);
-                Window.Controls.Add(field);
+                window.Labels.Add(field);
+                window.Controls.Add(field);
             });
-            return Window.Labels.Last() as InputField;
+            return window.Labels.Last() as InputField;
         }
 
         public CSDisplay(string name = "New Display", Size? dimensions = null, Point? position = null, CSColor? bgColor = null)
         {
+            inputHandler = new InputHandler();
             var formReady = new AutoResetEvent(false);
             Size dims = dimensions ?? DefaultDims;
             Point pos = position ?? new Point(Screen.PrimaryScreen.Bounds.Width / 2 - dims.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2 - dims.Height / 2);
             bgColor = bgColor ?? Colors.Black;
-            Window = new Window(display: this, bgColor); // Prevents warning due to Window not technically being assigned in the constructor.
+            window = new Window(display: this, bgColor); // Prevents warning due to Window not technically being assigned in the constructor.
 
             UIThread = new Thread(() =>
             {
-                Window = new Window(display: this, bgColor);
-                Window.HandleCreated += (_, __) => formReady.Set();
-                Window.StartPosition = FormStartPosition.Manual;
-                Window.AutoScroll = true;
-                Window.Text = name;
-                Window.BackColor = bgColor.ColorData;
-                Window.Size = dims;
-                Window.Location = pos;
-                Application.Run(Window);
+                window = new Window(display: this, bgColor);
+                window.HandleCreated += (_, __) => formReady.Set();
+                window.StartPosition = FormStartPosition.Manual;
+                window.AutoScroll = true;
+                window.Text = name;
+                window.BackColor = bgColor.ColorData;
+                window.Size = dims;
+                window.Location = pos;
+                Application.Run(window);
             });
 
             UIThread.SetApartmentState(ApartmentState.STA);
@@ -207,15 +209,17 @@ namespace ConsoleSharp
             formReady.WaitOne();
         }
 
-        public void KeyPressed(KeyPressEventArgs e) { InputHandler.KeyPressed(e); }
+        public void KeyPressed(KeyPressEventArgs e) { inputHandler.KeyPressed(e); }
 
-        private static class InputHandler
+        public void KeyDown(KeyEventArgs e) { inputHandler.KeyDown(e); }
+
+        private class InputHandler
         {
-            static bool Capturing = false;
-            private static readonly object _lock = new object();
-            static InputField? CapturingField;
+            bool Capturing = false;
+            readonly object _lock = new object();
+            InputField? CapturingField;
 
-            public static async Task<string> CaptureInput(InputField field)
+            public async Task<string> CaptureInput(InputField field)
             {
                 CapturingField = field;
                 Capturing = true;
@@ -225,15 +229,12 @@ namespace ConsoleSharp
                 });
                 lock (_lock)
                 {
-                    while (Capturing)
-                    {
-                        Monitor.Wait(_lock);
-                    }
+                    while (Capturing) Monitor.Wait(_lock);
                 }
                 return CapturingField.Text;
             }
 
-            public static void KeyPressed(KeyPressEventArgs e)
+            public void KeyPressed(KeyPressEventArgs e)
             {
                 if (Capturing)
                 {
@@ -254,6 +255,20 @@ namespace ConsoleSharp
                     }
                 }
             }
+
+            public void KeyDown(KeyEventArgs e)
+            {
+                if (Capturing)
+                {
+                    if (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right)
+                    {
+                        CapturingField?.BeginInvoke(() =>
+                        {
+                            CapturingField.HandleKeyDown(e);
+                        });
+                    }
+                }
+            }
         }
         public class TextCont
         {
@@ -270,9 +285,9 @@ namespace ConsoleSharp
             public override void PrintText(CSDisplay display, Label? field = null)
             {
                 Point? pos = null;
-                if (display.Window.Labels.Count > 0)
+                if (display.window.Labels.Count > 0)
                 {
-                    var prevField = display.Window.Labels.Last();
+                    var prevField = display.window.Labels.Last();
                     pos = new Point(0, prevField.Location.Y + prevField.GetPreferredSize(new Size(prevField.Width, 0)).Height);
                 }
                 var firstField = display.AddLabel(pos);
@@ -315,13 +330,13 @@ namespace ConsoleSharp
 
             public override void PrintText(CSDisplay display, Label? field = null)
             {
-                BGColor ??= display.Window.BGColor;
+                BGColor ??= display.window.BGColor;
                 if (field == null)
                 {
                     Point? pos = null;
-                    if (display.Window.Labels.Count > 0)
+                    if (display.window.Labels.Count > 0)
                     {
-                        var prevField = display.Window.Labels.Last();
+                        var prevField = display.window.Labels.Last();
                         pos = new Point(prevField.Location.X + prevField.Width, prevField.Location.Y);
                     }
                     field = display.AddLabel(pos);
@@ -534,39 +549,67 @@ namespace ConsoleSharp
                 ParamType = Delay.GetType();
             }
         }
-    }
 
-    public class Window : Form
-    {
-        private readonly CSDisplay Display;
-        public readonly CSColor BGColor;
-        public List<Label> Labels { get; private set; } = new List<Label>();
-        public Audio Audio { get; private set; } = new Audio();
-
-        private void WindowKeyPress(object? sender, KeyPressEventArgs e)
+        public class Window : Form
         {
-            e.Handled = true;
-            Display.KeyPressed(e);
-        }
+            readonly CSDisplay Display;
+            public readonly CSColor BGColor;
+            public List<Label> Labels { get; private set; } = new List<Label>();
+            public Audio Audio { get; private set; } = new Audio();
 
-        public Window(CSDisplay display, CSColor bgColor) : base()
-        {
-            Display = display;
-            BGColor = bgColor;
-            KeyPreview = true;
-            KeyPress += new KeyPressEventHandler(WindowKeyPress);
-        }
-    }
-
-    public class InputField : Label
-    {
-        public void HandleKeyPress(KeyPressEventArgs e)
-        {
-            BeginInvoke(() =>
+            void WindowKeyPress(object? sender, KeyPressEventArgs e)
             {
-                if (e.KeyChar == (char)Keys.Back) Text = Text.Remove(Text.Length - 1);
-                else Text += e.KeyChar;
-            });
+                e.Handled = true;
+                Display.KeyPressed(e);
+            }
+
+            void WindowKeyDown(object? sender, KeyEventArgs e)
+            {
+                e.Handled = true;
+                Display.KeyDown(e);
+            }
+
+            public Window(CSDisplay display, CSColor bgColor) : base()
+            {
+                Display = display;
+                BGColor = bgColor;
+                KeyPreview = true;
+                KeyPress += new KeyPressEventHandler(WindowKeyPress);
+                KeyDown += new KeyEventHandler(WindowKeyDown);
+            }
+        }
+
+        public class InputField : Label
+        {
+            int CursorIndex = 0;
+            public void HandleKeyPress(KeyPressEventArgs e)
+            {
+                BeginInvoke(() =>
+                {
+                    if (e.KeyChar == (char)Keys.Back)
+                    {
+                        if (CursorIndex > 0)
+                        {
+                            Text = Text.Remove(startIndex: CursorIndex - 1, count: 1);
+                            CursorIndex--;
+                        }
+                    }
+                    else
+                    {
+                        Text = Text.Insert(CursorIndex, e.KeyChar.ToString());
+                        CursorIndex++;
+                    }
+                });
+            }
+
+            public void HandleKeyDown(KeyEventArgs e)
+            {
+                BeginInvoke(() =>
+                {
+                    if (e.KeyCode == Keys.Left && CursorIndex > 0) CursorIndex--;
+                    else if (e.KeyCode == Keys.Right && CursorIndex < Text.Length) CursorIndex++;
+                });
+            }
         }
     }
 
