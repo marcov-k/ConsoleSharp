@@ -17,9 +17,18 @@ namespace ConsoleSharp
     public class CSDisplay
     {
         public static Size DefaultDims { get; set; } = new Size(500, 500);
-        public Window window { get; private set; }
+        Window window;
         readonly InputHandler inputHandler;
         readonly Thread UIThread;
+        static readonly List<CSDisplay> AllInstances = new List<CSDisplay>();
+        public bool DoNotQuit { get { return _donotquit; } 
+            set 
+            {
+                _donotquit = value;
+                if (AllInstances.Count == 0) Environment.Exit(0);
+            }
+        }
+        bool _donotquit = false;
 
         public async Task<string> ReadLine(Line prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
         {
@@ -207,13 +216,22 @@ namespace ConsoleSharp
             UIThread.SetApartmentState(ApartmentState.STA);
             UIThread.Start();
             formReady.WaitOne();
+            AllInstances.Add(this);
         }
 
-        public void KeyPressed(KeyPressEventArgs e) { inputHandler.KeyPressed(e); }
+        void KeyPressed(KeyPressEventArgs e) { inputHandler.KeyPressed(e); }
 
-        public void KeyDown(KeyEventArgs e) { inputHandler.KeyDown(e); }
+        void KeyDown(KeyEventArgs e) { inputHandler.KeyDown(e); }
 
-        private class InputHandler
+        void MouseClick(MouseEventArgs e) { inputHandler.MouseClick(e); }
+
+        void WindowClosed()
+        {
+            AllInstances.Remove(this);
+            if (!DoNotQuit && AllInstances.Count == 0) Environment.Exit(0);
+        }
+
+        class InputHandler
         {
             bool Capturing = false;
             readonly object _lock = new object();
@@ -260,16 +278,25 @@ namespace ConsoleSharp
             {
                 if (Capturing)
                 {
-                    if (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right)
+                    CapturingField?.BeginInvoke(() =>
                     {
-                        CapturingField?.BeginInvoke(() =>
-                        {
-                            CapturingField.HandleKeyDown(e);
-                        });
-                    }
+                        CapturingField.HandleKeyDown(e);
+                    });
+                }
+            }
+
+            public void MouseClick(MouseEventArgs e)
+            {
+                if (Capturing)
+                {
+                    CapturingField?.BeginInvoke(() =>
+                    {
+                        CapturingField.HandleMouseClick(e);
+                    });
                 }
             }
         }
+
         public class TextCont
         {
             public virtual void PrintText(CSDisplay display, Label? field = null)
@@ -550,7 +577,7 @@ namespace ConsoleSharp
             }
         }
 
-        public class Window : Form
+        class Window : Form
         {
             readonly CSDisplay Display;
             public readonly CSColor BGColor;
@@ -569,6 +596,16 @@ namespace ConsoleSharp
                 Display.KeyDown(e);
             }
 
+            void WindowMouseClick(object? sender, MouseEventArgs e)
+            {
+                Display.MouseClick(e);
+            }
+
+            void WindowClosed(object? sender, FormClosedEventArgs e)
+            {
+                Display.WindowClosed();
+            }
+
             public Window(CSDisplay display, CSColor bgColor) : base()
             {
                 Display = display;
@@ -576,12 +613,15 @@ namespace ConsoleSharp
                 KeyPreview = true;
                 KeyPress += new KeyPressEventHandler(WindowKeyPress);
                 KeyDown += new KeyEventHandler(WindowKeyDown);
+                MouseClick += new MouseEventHandler(WindowMouseClick);
+                FormClosed += new FormClosedEventHandler(WindowClosed);
             }
         }
 
         public class InputField : Label
         {
             int CursorIndex = 0;
+
             public void HandleKeyPress(KeyPressEventArgs e)
             {
                 BeginInvoke(() =>
@@ -609,6 +649,39 @@ namespace ConsoleSharp
                     if (e.KeyCode == Keys.Left && CursorIndex > 0) CursorIndex--;
                     else if (e.KeyCode == Keys.Right && CursorIndex < Text.Length) CursorIndex++;
                 });
+            }
+
+            public void HandleMouseClick(MouseEventArgs e)
+            {
+                var pos = e.X;
+
+                if (pos <= 0) CursorIndex = 0;
+                else if (pos >= Width) CursorIndex = Text.Length;
+                else
+                {
+                    int prevWidth = 0;
+                    var refLabel = new Label();
+                    refLabel.AutoSize = true;
+                    refLabel.Font = this.Font;
+                    var chars = Utils.ParseString(Text);
+                    for (int i = 0; i < chars.Count; i++)
+                    {
+                        refLabel.Text += chars[i];
+                        var refWidth = refLabel.PreferredWidth;
+                        if (pos < refWidth)
+                        {
+                            if (Math.Abs(refWidth - pos) < Math.Abs(prevWidth - pos)) CursorIndex = i + 1;
+                            else CursorIndex = i;
+                            break;
+                        }
+                        prevWidth = refWidth;
+                    }
+                }
+            }
+
+            public InputField() : base()
+            {
+                MouseClick += new MouseEventHandler((sender, e) => HandleMouseClick(e));
             }
         }
     }
