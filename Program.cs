@@ -2,8 +2,13 @@ using ConsoleSharp;
 using static ConsoleSharp.CSDisplay;
 
 var display = new CSDisplay(dimensions: new Size(1920, 1080));
-string userInput = await display.ReadLine(prompt: @"Enter an input...", font: new CSFont(fontSize: 40), cursorColor: Colors.Red);
-display.Print(userInput);
+CSColor textColor = Colors.LightBlue;
+CSFont textFont = new CSFont(fontFamily: FontFamily.GenericMonospace, fontSize: 30);
+Effect textEffect = new TypeWriter(100);
+CSColor inputColor = Colors.LightGreen;
+display.Print(new TextBlock("Hello and welcome!", textColor: textColor, font: textFont, effect: textEffect));
+string userInput = await display.ReadLine(prompt: new Line(new TextBlock("Please enter your name: ", textColor: textColor, font: textFont, effect: textEffect)), textColor: inputColor, font: textFont, cursorColor: Colors.Red);
+display.Print(new Line(new TextBlock($"Welcome to the game {userInput}.", textColor: textColor, font: textFont, effect: textEffect)));
 
 namespace ConsoleSharp
 {
@@ -20,7 +25,8 @@ namespace ConsoleSharp
         Window window;
         readonly InputHandler inputHandler;
         readonly Thread UIThread;
-        static readonly List<CSDisplay> AllInstances = new List<CSDisplay>();
+        readonly Thread MainThread;
+        static readonly List<CSDisplay> AllInstances = [];
         public bool DoNotQuit {
             get { return _donotquit; }
             set
@@ -57,6 +63,7 @@ namespace ConsoleSharp
 
         private async Task<string> ReadLineImpl(CSColor? textColor, CSColor? bgColor, CSFont? font, CSColor? cursorColor)
         {
+            MainThread.Join(100);
             textColor ??= Colors.White;
             bgColor ??= window.BGColor;
             font ??= new CSFont();
@@ -193,6 +200,7 @@ namespace ConsoleSharp
 
         public CSDisplay(string name = "New Display", Size? dimensions = null, Point? position = null, CSColor? bgColor = null)
         {
+            MainThread = Thread.CurrentThread;
             inputHandler = new InputHandler();
             var formReady = new AutoResetEvent(false);
             Size dims = dimensions ?? DefaultDims;
@@ -470,7 +478,7 @@ namespace ConsoleSharp
 
         public class CSFont
         {
-            public static FontFamily DefaultFontFamily { get; set; } = FontFamily.GenericSansSerif;
+            public static FontFamily DefaultFontFamily { get; set; } = FontFamily.GenericMonospace;
             public static int DefaultFontSize { get; set; } = 12;
             public static FontStyle DefaultFontStyle { get; set; } = FontStyle.Regular;
             public Font FontData { get; private set; }
