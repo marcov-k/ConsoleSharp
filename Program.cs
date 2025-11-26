@@ -1,7 +1,7 @@
 using ConsoleSharp;
 using static ConsoleSharp.CSDisplay;
 
-var display = new CSDisplay(dimensions: new Size(1920, 1080));
+var display = new CSDisplay(name: "ConsoleSharp Demo", dimensions: new Size(1920, 1080), bgColor: Colors.DarkRed);
 CSColor textColor = Colors.LightBlue;
 CSFont textFont = new CSFont(fontFamily: FontFamily.GenericMonospace, fontSize: 30);
 Effect textEffect = new TypeWriter(100);
