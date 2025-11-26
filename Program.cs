@@ -811,14 +811,7 @@ namespace ConsoleSharp
                     var bc = new CSColor(r, g, b, a);
 
                     // Instantiate Font
-                    if (Families == null)
-                    {
-                        Families = [];
-                        foreach (var family in FontFamily.Families)
-                        {
-                            Families.Add(family.Name, family);
-                        }
-                    }
+                    if (Families == null) InitFamilyDict();
 
                     FontFamily? fontFam = null;
                     if (fam != null && Families.TryGetValue(fam, out FontFamily? value))
@@ -865,15 +858,7 @@ namespace ConsoleSharp
         {
             Effect effect = new NoEffect();
 
-            if (Effects == null)
-            {
-                Effects = [];
-                var efSubclasses = GetInheritedClasses(typeof(Effect));
-                foreach (var efSubclass in efSubclasses)
-                {
-                    Effects.Add(efSubclass.Name, efSubclass);
-                }
-            }
+            if (Effects == null) InitEffectDict();
 
             dynamic? param = null;
             if (ef_name != null && Effects.TryGetValue(ef_name, out Type value))
@@ -888,12 +873,13 @@ namespace ConsoleSharp
             return effect;
         }
 
-        static List<Type> GetInheritedClasses(Type baseType)
+        public static void AddEffectSubclass(Type newEffect)
         {
-            return [.. Assembly.GetAssembly(baseType).GetTypes().Where(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(baseType))];
+            if (Effects == null) InitEffectDict();
+            else Effects.Add(newEffect.Name, newEffect);
         }
 
-        public static void AddEffectSubclass(Type newEffect)
+        static void InitEffectDict()
         {
             if (Effects == null)
             {
@@ -904,9 +890,25 @@ namespace ConsoleSharp
                     Effects.Add(efSubclass.Name, efSubclass);
                 }
             }
-            else Effects.Add(newEffect.Name, newEffect);
         }
-        
+
+        static List<Type> GetInheritedClasses(Type baseType)
+        {
+            return [.. Assembly.GetAssembly(baseType).GetTypes().Where(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(baseType))];
+        }
+
+        static void InitFamilyDict()
+        {
+            if (Families == null)
+            {
+                Families = [];
+                foreach (var family in FontFamily.Families)
+                {
+                    Families.Add(family.Name, family);
+                }
+            }
+        }
+
         public static (int r, int g, int b) HexToRGB(string hex)
         {
             if (HexRegex().IsMatch(hex))
