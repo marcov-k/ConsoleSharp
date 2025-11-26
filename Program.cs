@@ -19,15 +19,20 @@ namespace ConsoleSharp
     using static CSDisplay;
     using System.Threading.Tasks;
 
+    /// <summary>
+    /// Class for creating and handling a single ConsoleSharp window.
+    /// </summary>
     public class CSDisplay
     {
+        /// <summary>
+        /// The default pixel size for a new window if no dimensions are provided.
+        /// </summary>
         public static Size DefaultDims { get; set; } = new Size(500, 500);
-        Window window;
-        readonly InputHandler inputHandler;
-        readonly Thread UIThread;
-        readonly Thread MainThread;
-        static readonly List<CSDisplay> AllInstances = [];
-        public bool DoNotQuit {
+        /// <summary>
+        /// Whether closing the last window also quits the application.
+        /// </summary>
+        public bool DoNotQuit
+        {
             get { return _donotquit; }
             set
             {
@@ -35,32 +40,99 @@ namespace ConsoleSharp
                 if (!value && AllInstances.Count == 0) Environment.Exit(0);
             }
         }
+        /// <summary>
+        /// Internal property storing the value of DoNotQuit.
+        /// </summary>
         bool _donotquit = false;
+        /// <summary>
+        /// The window managed by the display instance.
+        /// </summary>
+        Window window;
+        /// <summary>
+        /// The user input handler for the instance.
+        /// </summary>
+        readonly InputHandler inputHandler;
+        /// <summary>
+        /// The UI thread which the window operates on.
+        /// </summary>
+        readonly Thread UIThread;
+        /// <summary>
+        /// The main thread which the display instance operates on.
+        /// </summary>
+        readonly Thread MainThread;
+        /// <summary>
+        /// List of all display instances with open windows.
+        /// </summary>
+        static readonly List<CSDisplay> AllInstances = [];
 
+        /// <summary>
+        /// Prints a prompt and reads the input entered by the user.
+        /// </summary>
+        /// <param name="prompt">A Line class representing the prompt to be printed.</param>
+        /// <param name="textColor">The text color of the input field.</param>
+        /// <param name="bgColor">The background color of the input field.</param>
+        /// <param name="font">The font data of the input field.</param>
+        /// <param name="cursorColor">The color of the cursor for the input field.</param>
+        /// <returns>A string containing the user input.</returns>
         public async Task<string> ReadLine(Line prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
         {
             Print(prompt);
             return await ReadLineImpl(textColor, bgColor, font, cursorColor);
         }
 
+        /// <summary>
+        /// Prints a prompt and reads the input entered by the user.
+        /// </summary>
+        /// <param name="prompt">A list of TextBlock classes representing the prompt to be printed.</param>
+        /// <param name="textColor">The text color of the input field.</param>
+        /// <param name="bgColor">The background color of the input field.</param>
+        /// <param name="font">The font data of the input field.</param>
+        /// <param name="cursorColor">The color of the cursor for the input field.</param>
+        /// <returns>A string containing the user input.</returns>
         public async Task<string> ReadLine(List<TextBlock> prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
         {
             Print(prompt);
             return await ReadLineImpl(textColor, bgColor, font, cursorColor);
         }
 
+        /// <summary>
+        /// Prints a prompt and reads the input entered by the user.
+        /// </summary>
+        /// <param name="prompt">A TextBlock class representing the prompt to be printed.</param>
+        /// <param name="textColor">The text color of the input field.</param>
+        /// <param name="bgColor">The background color of the input field.</param>
+        /// <param name="font">The font data of the input field.</param>
+        /// <param name="cursorColor">The color of the cursor for the input field.</param>
+        /// <returns>A string containing the user input.</returns>
         public async Task<string> ReadLine(TextBlock prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
         {
             Print(prompt);
             return await ReadLineImpl(textColor, bgColor, font, cursorColor);
         }
 
+        /// <summary>
+        /// Prints a prompt and reads the input entered by the user.
+        /// </summary>
+        /// <param name="prompt">A string with optional embedded styling representing the prompt to be printed.</param>
+        /// <param name="textColor">The text color of the input field.</param>
+        /// <param name="bgColor">The background color of the input field.</param>
+        /// <param name="font">The font data of the input field.</param>
+        /// <param name="cursorColor">The color of the cursor for the input field.</param>
+        /// <returns>A string containing the user input.</returns>
         public async Task<string> ReadLine(string prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
         {
             Print(prompt);
             return await ReadLineImpl(textColor, bgColor, font, cursorColor);
         }
 
+        /// <summary>
+        /// Creates a new input field and reads the user input to from it.
+        /// </summary>
+        /// <param name="textColor">The text color of the input field.</param>
+        /// <param name="bgColor">The background color of the input field.</param>
+        /// <param name="font">The font of the input field.</param>
+        /// <param name="cursorColor">The color of hte cursor of the input field.</param>
+        /// <returns></returns>
         private async Task<string> ReadLineImpl(CSColor? textColor, CSColor? bgColor, CSFont? font, CSColor? cursorColor)
         {
             MainThread.Join(100);
@@ -77,6 +149,10 @@ namespace ConsoleSharp
             return await inputHandler.CaptureInput(field);
         }
 
+        /// <summary>
+        /// Prints multiple lines of text to the screen.
+        /// </summary>
+        /// <param name="lines">A list of Line classes representing the text to be printed.</param>
         public void Print(List<Line> lines)
         {
             foreach (var line in lines)
@@ -85,11 +161,19 @@ namespace ConsoleSharp
             }
         }
 
+        /// <summary>
+        /// Prints a single line of text to the screen.
+        /// </summary>
+        /// <param name="line">A Line class representing the text to be printed.</param>
         public void Print(Line line)
         {
             line.PrintText(display: this);
         }
 
+        /// <summary>
+        /// Appends multiple blocks of text to the current line on the screen.
+        /// </summary>
+        /// <param name="texts">A list of TextBlock classes representing the text to be appended.</param>
         public void Print(List<TextBlock> texts)
         {
             foreach (var text in texts)
@@ -98,11 +182,19 @@ namespace ConsoleSharp
             }
         }
 
+        /// <summary>
+        /// Appends a single block of text to the current line on the screen.
+        /// </summary>
+        /// <param name="text">A TextBlock class representing the text to be appended.</param>
         public void Print(TextBlock text)
         {
             text.PrintText(display: this);
         }
 
+        /// <summary>
+        /// Prints a string with optional embedded styling to the screen.
+        /// </summary>
+        /// <param name="text">The string to be printed.</param>
         public void Print(string text)
         {
             var lines = Utils.BuildFromString(text);
@@ -112,6 +204,10 @@ namespace ConsoleSharp
             }
         }
 
+        /// <summary>
+        /// Prints an empty line to the screen.
+        /// </summary>
+        /// <param name="fontSize">The font size for the empty line.</param>
         public void Print(int? fontSize = null)
         {
             Point? pos = null;
@@ -123,6 +219,13 @@ namespace ConsoleSharp
             AddLabel(pos, fontSize);
         }
 
+        /// <summary>
+        /// Prints a horizontal divider across the width of the screen.
+        /// </summary>
+        /// <param name="font">The font for the divider.</param>
+        /// <param name="textColor">The color of the divider.</param>
+        /// <param name="bgColor">The color of the background of the divider.</param>
+        /// <param name="effect">The text effect with which the divider is printed.</param>
         public void PrintDivider(CSFont? font = null, CSColor? textColor = null, CSColor? bgColor = null, Effect? effect = null)
         {
             font ??= new CSFont();
@@ -154,11 +257,21 @@ namespace ConsoleSharp
             Print(fillLine);
         }
 
+        /// <summary>
+        /// Plays a .WAV file using the window's audio device.
+        /// </summary>
+        /// <param name="file">The name or path of the file to be played.</param>
         public void PlayWAV(string file)
         {
             window.BeginInvoke(() => window.Audio.Play(file));
         }
 
+        /// <summary>
+        /// Adds a new label for displaying text to the window.
+        /// </summary>
+        /// <param name="pos">Position of the new label on the window.</param>
+        /// <param name="fontSize">Size of the font of the new label.</param>
+        /// <returns>A reference to the new label.</returns>
         private Label AddLabel(Point? pos = null, int? fontSize = null)
         {
             CSFont font = new CSFont(fontSize: fontSize, fontStyle: null);
@@ -177,6 +290,15 @@ namespace ConsoleSharp
             return window.Labels.Last();
         }
 
+        /// <summary>
+        /// Adds a new input field for reading user input to the window.
+        /// </summary>
+        /// <param name="pos">The position of the new input field on the window.</param>
+        /// <param name="textColor">The text color of the new input field.</param>
+        /// <param name="bgColor">The background color of the new input field.</param>
+        /// <param name="font">The font of the new input field.</param>
+        /// <param name="cursorColor">The color of the cursor of the new input field.</param>
+        /// <returns>A reference to the new input field.</returns>
         private InputField AddInputField(Point? pos = null, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
         {
             textColor ??= Colors.White;
@@ -198,6 +320,13 @@ namespace ConsoleSharp
             return window.Labels.Last() as InputField;
         }
 
+        /// <summary>
+        /// Creates a new instance of CSDisplay and a corresponding window.
+        /// </summary>
+        /// <param name="name">The name of the new window.</param>
+        /// <param name="dimensions">The pixel dimensions of the new window.</param>
+        /// <param name="position">The initial position of the new window on the screen.</param>
+        /// <param name="bgColor">The background color of the new window.</param>
         public CSDisplay(string name = "New Display", Size? dimensions = null, Point? position = null, CSColor? bgColor = null)
         {
             MainThread = Thread.CurrentThread;
@@ -227,22 +356,41 @@ namespace ConsoleSharp
             AllInstances.Add(this);
         }
 
+        /// <summary>
+        /// Passes user key presses from the window to the input handler.
+        /// </summary>
+        /// <param name="e">Arguments from the key press event.</param>
         void KeyPressed(KeyPressEventArgs e) { inputHandler.KeyPressed(e); }
 
+        /// <summary>
+        /// Passes user key downs from the window to the input handler.
+        /// </summary>
+        /// <param name="e">Arguments from the key down event.</param>
         void KeyDown(KeyEventArgs e) { inputHandler.KeyDown(e); }
 
+        /// <summary>
+        /// Handles the closing of the window.
+        /// </summary>
         void WindowClosed()
         {
             AllInstances.Remove(this);
             if (!DoNotQuit && AllInstances.Count == 0) Environment.Exit(0);
         }
 
+        /// <summary>
+        /// Class for handling the reading of user inputs.
+        /// </summary>
         class InputHandler
         {
             bool Capturing = false;
-            readonly object _lock = new object();
+            readonly object _lock = new();
             InputField? CapturingField;
 
+            /// <summary>
+            /// Captures the input typed by the user into a given input field.
+            /// </summary>
+            /// <param name="field">The input field which the user is typing in.</param>
+            /// <returns>A string containing the user input.</returns>
             public async Task<string> CaptureInput(InputField field)
             {
                 CapturingField = field;
@@ -259,6 +407,10 @@ namespace ConsoleSharp
                 return CapturingField.Text;
             }
 
+            /// <summary>
+            /// Handles user key presses during capturing and passes them to the capturing input field.
+            /// </summary>
+            /// <param name="e">Arguments from the key press event.</param>
             public void KeyPressed(KeyPressEventArgs e)
             {
                 if (Capturing)
@@ -281,6 +433,10 @@ namespace ConsoleSharp
                 }
             }
 
+            /// <summary>
+            /// Passes user key downs to the capturing input field.
+            /// </summary>
+            /// <param name="e">Arguments from the key down event.</param>
             public void KeyDown(KeyEventArgs e)
             {
                 if (Capturing)
@@ -293,18 +449,37 @@ namespace ConsoleSharp
             }
         }
 
+        /// <summary>
+        /// Parent class for classes representing text in ConsoleSharp.
+        /// </summary>
         public class TextCont
         {
+            /// <summary>
+            /// Parent method for printing text contained in ConsoleSharp text classes.
+            /// </summary>
+            /// <param name="display">The display to print to.</param>
+            /// <param name="field">The text field to print to.</param>
+            /// <exception cref="NotImplementedException"></exception>
             public virtual void PrintText(CSDisplay display, Label? field = null)
             {
                 throw new NotImplementedException();
             }
         }
 
+        /// <summary>
+        /// Class representing a single line of text.
+        /// </summary>
         public class Line : TextCont
         {
-            public List<TextBlock> TextBlocks { get; set; } = new List<TextBlock>();
-
+            /// <summary>
+            /// List of TextBlocks which make up the line.
+            /// </summary>
+            public List<TextBlock> TextBlocks { get; set; } = [];
+            /// <summary>
+            /// Prints the entire text contents of the line.
+            /// </summary>
+            /// <param name="display">The display to print to.</param>
+            /// <param name="field">The first field to print to.</param>
             public override void PrintText(CSDisplay display, Label? field = null)
             {
                 Point? pos = null;
@@ -328,29 +503,63 @@ namespace ConsoleSharp
                     }
                 }
             }
-
+            /// <summary>
+            /// Creates an empty Line instance.
+            /// </summary>
             public Line() { }
-
+            /// <summary>
+            /// Creates a Line instance containing a single TextBlock.
+            /// </summary>
+            /// <param name="text">A TextBlock class representing the contents of the line.</param>
             public Line(TextBlock text)
             {
                 TextBlocks.Add(text);
             }
-
+            /// <summary>
+            /// Creates a Line instance containing multiple TextBlocks.
+            /// </summary>
+            /// <param name="textBlocks">A list of TextBlock classes representing the contents of the line.</param>
             public Line(List<TextBlock> textBlocks)
             {
                 TextBlocks.AddRange(textBlocks);
             }
         }
 
+        /// <summary>
+        /// Class representing a single block of text within a line.
+        /// </summary>
         public class TextBlock : TextCont
         {
+            /// <summary>
+            /// The default text printing effect for new TextBlock instances.
+            /// </summary>
             public static Effect DefaultEffect { get; set; } = new NoEffect();
+            /// <summary>
+            /// The string represented by the TextBlock.
+            /// </summary>
             public string Text { get; set; } = "";
+            /// <summary>
+            /// The text color of the TextBlock.
+            /// </summary>
             public CSColor TextColor { get; set; } = Colors.White;
+            /// <summary>
+            /// The background color of the TextBlock.
+            /// </summary>
             public CSColor? BGColor { get; set; }
+            /// <summary>
+            /// The font of the TextBlock.
+            /// </summary>
             public CSFont Font { get; set; } = new CSFont();
+            /// <summary>
+            /// The printing effect used by the TextBlock.
+            /// </summary>
             public Effect Effect { get; set; }
 
+            /// <summary>
+            /// Prints the entire text contents of the TextBlock.
+            /// </summary>
+            /// <param name="display">The display to print to.</param>
+            /// <param name="field">The initial field to print to.</param>
             public override void PrintText(CSDisplay display, Label? field = null)
             {
                 BGColor ??= display.window.BGColor;
@@ -373,6 +582,14 @@ namespace ConsoleSharp
                 Effect.PrintEffect(Text, field);
             }
 
+            /// <summary>
+            /// Creates a new TextBlock instance.
+            /// </summary>
+            /// <param name="text">The string represented by the TextBlock.</param>
+            /// <param name="textColor">The text color of the TextBlock.</param>
+            /// <param name="bgColor">The background color of the TextBlock.</param>
+            /// <param name="font">The font of the TextBlock.</param>
+            /// <param name="effect">The printing effect used by the TextBlock.</param>
             public TextBlock(string? text = null, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, Effect? effect = null)
             {
                 Text = text ?? Text;
@@ -383,8 +600,14 @@ namespace ConsoleSharp
             }
         }
 
+        /// <summary>
+        /// Class representing color data in ConsoleSharp.
+        /// </summary>
         public class CSColor
         {
+            /// <summary>
+            /// The red value of the color.
+            /// </summary>
             public int R
             {
                 get { return _r; }
@@ -398,6 +621,9 @@ namespace ConsoleSharp
                     }
                 }
             }
+            /// <summary>
+            /// The green value of the color.
+            /// </summary>
             public int G
             {
                 get { return _g; }
@@ -411,6 +637,9 @@ namespace ConsoleSharp
                     }
                 }
             }
+            /// <summary>
+            /// The blue value of the color.
+            /// </summary>
             public int B
             {
                 get { return _b; }
@@ -424,6 +653,9 @@ namespace ConsoleSharp
                     }
                 }
             }
+            /// <summary>
+            /// The alpha value of the color.
+            /// </summary>
             public int A
             {
                 get { return _a; }
@@ -438,28 +670,60 @@ namespace ConsoleSharp
                 }
             }
 
+            /// <summary>
+            /// Internal property storing the red value of the color.
+            /// </summary>
             private int _r = 0;
+            /// <summary>
+            /// Internal property storing the green value of the color.
+            /// </summary>
             private int _g = 0;
+            /// <summary>
+            /// Internal property storing the blue value of the color.
+            /// </summary>
             private int _b = 0;
+            /// <summary>
+            /// Internal property storing the alpha value of the color.
+            /// </summary>
             private int _a = 0;
 
+            /// <summary>
+            /// The C# representation of the RGBA data of the color.
+            /// </summary>
             public Color ColorData { get; private set; }
 
+            /// <summary>
+            /// Updates the C# representation to match the current RGBA values.
+            /// </summary>
             void UpdateColorData()
             {
                 ColorData = Color.FromArgb(_a, _r, _g, _b);
             }
 
+            /// <summary>
+            /// Creates a new CSColor instance with the identical RGBA values.
+            /// </summary>
+            /// <returns>A reference to the new instance.</returns>
             public CSColor Clone()
             {
                 return new CSColor(_r, _g, _b, _a);
             }
 
+            /// <summary>
+            /// Creates a new CSColor instance defaulting to black.
+            /// </summary>
             public CSColor()
             {
                 (R, G, B, A) = (0, 0, 0, 255);
             }
 
+            /// <summary>
+            /// Creates a new CSColor instance using the given RGBA values.
+            /// </summary>
+            /// <param name="r">The red value of the color.</param>
+            /// <param name="g">The green value of the color.</param>
+            /// <param name="b">The blue value of the color.</param>
+            /// <param name="a">The alpha value of the color.</param>
             public CSColor(int? r = null, int? g = null, int? b = null, int? a = null)
             {
                 R = (r != null) ? r.Value : 0;
@@ -468,6 +732,11 @@ namespace ConsoleSharp
                 A = (a != null) ? a.Value : 255;
             }
 
+            /// <summary>
+            /// Creates a new CSColor instance using the given hexadecimal code and A value.
+            /// </summary>
+            /// <param name="hex">The hexadecimal code of the color.</param>
+            /// <param name="a">The alpha value of the color.</param>
             public CSColor(string? hex = null, int? a = null)
             {
                 hex ??= "000000";
@@ -476,23 +745,50 @@ namespace ConsoleSharp
             }
         }
 
+        /// <summary>
+        /// Class representing font data in ConsoleSharp.
+        /// </summary>
         public class CSFont
         {
+            /// <summary>
+            /// The default font family for new CSFont instances.
+            /// </summary>
             public static FontFamily DefaultFontFamily { get; set; } = FontFamily.GenericMonospace;
+            /// <summary>
+            /// The default font size for new CSFont instances.
+            /// </summary>
             public static int DefaultFontSize { get; set; } = 12;
+            /// <summary>
+            /// The default font style for new CSFont instances.
+            /// </summary>
             public static FontStyle DefaultFontStyle { get; set; } = FontStyle.Regular;
+            /// <summary>
+            /// The C# representation of the font data.
+            /// </summary>
             public Font FontData { get; private set; }
 
+            /// <summary>
+            /// Creates a new CSFont instance using all default parameters.
+            /// </summary>
             public CSFont()
             {
                 FontData = new Font(DefaultFontFamily, DefaultFontSize, DefaultFontStyle);
             }
 
+            /// <summary>
+            /// Creates a new CSFont instance with the specified parameters.
+            /// </summary>
+            /// <param name="fontSize">The size of the font.</param>
             public CSFont(int fontSize)
             {
                 FontData = new Font(DefaultFontFamily, fontSize, DefaultFontStyle);
             }
 
+            /// <summary>
+            /// Creates a new CSFont instance with the specified parameters.
+            /// </summary>
+            /// <param name="fontFamily">The font family of the font.</param>
+            /// <param name="fontSize">The size of the font.</param>
             public CSFont(FontFamily? fontFamily = null, int? fontSize = null)
             {
                 FontFamily family = fontFamily ?? DefaultFontFamily;
@@ -500,12 +796,24 @@ namespace ConsoleSharp
                 FontData = new Font(family, size);
             }
 
+            /// <summary>
+            /// Creates a new CSFont instance with the specified parameters.
+            /// </summary>
+            /// <param name="fontFamily">The font family of the font.</param>
+            /// <param name="fontSize">The size of the font.</param>
+            /// <param name="fontStyle">A single style to be applied to the font.</param>
             public CSFont(FontFamily? fontFamily = null, int? fontSize = null, FontStyle? fontStyle = null) : this(fontFamily, fontSize)
             {
                 FontStyle style = fontStyle ?? DefaultFontStyle;
                 FontData = new Font(FontData.FontFamily, FontData.SizeInPoints, style);
             }
 
+            /// <summary>
+            /// Creates a new CSFont instance with the specified parameters.
+            /// </summary>
+            /// <param name="fontFamily">The font family of the font.</param>
+            /// <param name="fontSize">The size of the font.</param>
+            /// <param name="fontStyles">A list of styles to be applied to the font.</param>
             public CSFont(FontFamily? fontFamily = null, int? fontSize = null, List<FontStyle>? fontStyles = null) : this(fontFamily, fontSize)
             {
                 FontStyle style = DefaultFontStyle;
@@ -521,35 +829,77 @@ namespace ConsoleSharp
             }
         }
 
+        /// <summary>
+        /// Parent class for effects to be applied while printing text.
+        /// </summary>
         public class Effect
         {
+            /// <summary>
+            /// Represents the type of parameter used by the effect.
+            /// </summary>
             public Type? ParamType { get; private set; } = null;
 
+            /// <summary>
+            /// Prints a string using the logic of the effect.
+            /// </summary>
+            /// <param name="text">The string to be printed.</param>
+            /// <param name="field">The field to print to.</param>
+            /// <exception cref="NotImplementedException"></exception>
             public virtual void PrintEffect(string text, Label field)
             {
                 throw new NotImplementedException();
             }
 
+            /// <summary>
+            /// Sets the parameter of the effect.
+            /// </summary>
+            /// <param name="newParam">The new value of the parameter</param>
+            /// <exception cref="NotImplementedException"></exception>
             public virtual void SetParam(dynamic newParam)
             {
                 throw new NotImplementedException();
             }
         }
 
+        /// <summary>
+        /// Effect subclass for not applying any effect to a string.
+        /// </summary>
         public class NoEffect : Effect
         {
+            /// <summary>
+            /// Prints a string without applying any effect.
+            /// </summary>
+            /// <param name="text">The string to be printed.</param>
+            /// <param name="field">The field to print to.</param>
             public override void PrintEffect(string text, Label field)
             {
                 field.BeginInvoke(() => field.Text += text);
             }
         }
 
+        /// <summary>
+        /// Effect subclass for applying a type writer-esque effect to a string.
+        /// </summary>
         public class TypeWriter : Effect
         {
+            /// <summary>
+            /// The delay in milliseconds between characters.
+            /// </summary>
             public int Delay { get; set; }
+            /// <summary>
+            /// The default delay.
+            /// </summary>
             private readonly int DefaultDelay = 200;
+            /// <summary>
+            /// Represents the type of parameter used by the effect.
+            /// </summary>
             public new Type? ParamType { get; private set; }
 
+            /// <summary>
+            /// Prints a string with a delay applied after every character.
+            /// </summary>
+            /// <param name="text">The string to be printed.</param>
+            /// <param name="field">The field to print to.</param>
             public override void PrintEffect(string text, Label field)
             {
                 var chars = Utils.ParseString(text);
@@ -560,17 +910,28 @@ namespace ConsoleSharp
                 }
             }
 
+            /// <summary>
+            /// Sets the parameter of the effect.
+            /// </summary>
+            /// <param name="newParam">The new value of the parameter.</param>
             public override void SetParam(dynamic newParam)
             {
                 Delay = newParam;
             }
 
+            /// <summary>
+            /// Creates a new TypeWriter instance using the default delay.
+            /// </summary>
             public TypeWriter()
             {
                 Delay = DefaultDelay;
                 ParamType = Delay.GetType();
             }
 
+            /// <summary>
+            /// Creates a new TypeWriter instance.
+            /// </summary>
+            /// <param name="delay">The delay in milliseconds between characters.</param>
             public TypeWriter(int delay = 500)
             {
                 Delay = delay;
@@ -578,47 +939,95 @@ namespace ConsoleSharp
             }
         }
 
+        /// <summary>
+        /// Class representing the visual window created by the display.
+        /// </summary>
         class Window : Form
         {
+            /// <summary>
+            /// The display managing the window.
+            /// </summary>
             readonly CSDisplay Display;
+            /// <summary>
+            /// The background color of the window.
+            /// </summary>
             public readonly CSColor BGColor;
+            /// <summary>
+            /// List of all text fields displayed on the window.
+            /// </summary>
             public List<Label> Labels { get; private set; } = new List<Label>();
+            /// <summary>
+            /// The audio player of the window.
+            /// </summary>
             public Audio Audio { get; private set; } = new Audio();
 
-            void WindowKeyPress(object? sender, KeyPressEventArgs e)
+            /// <summary>
+            /// Passes user key presses to the display managing the window.
+            /// </summary>
+            /// <param name="e">Arguments from the key press event.</param>
+            void WindowKeyPress(KeyPressEventArgs e)
             {
                 e.Handled = true;
                 Display.KeyPressed(e);
             }
 
-            void WindowKeyDown(object? sender, KeyEventArgs e)
+            /// <summary>
+            /// Passes user key downs to the display managing the window.
+            /// </summary>
+            /// <param name="e">Arguments from the key down event.</param>
+            void WindowKeyDown(KeyEventArgs e)
             {
                 e.Handled = true;
                 Display.KeyDown(e);
             }
 
-            void WindowClosed(object? sender, FormClosedEventArgs e)
+            /// <summary>
+            /// Passes the close event to the display managing the window.
+            /// </summary>
+            /// <param name="e">Arguments from the close event.</param>
+            void WindowClosed(FormClosedEventArgs e)
             {
                 Display.WindowClosed();
             }
 
+            /// <summary>
+            /// Creates a new Window instance.
+            /// </summary>
+            /// <param name="display">The display managing the window.</param>
+            /// <param name="bgColor">The background color of the window.</param>
             public Window(CSDisplay display, CSColor bgColor) : base()
             {
                 Display = display;
                 BGColor = bgColor;
                 KeyPreview = true;
-                KeyPress += new KeyPressEventHandler(WindowKeyPress);
-                KeyDown += new KeyEventHandler(WindowKeyDown);
-                FormClosed += new FormClosedEventHandler(WindowClosed);
+                KeyPress += new KeyPressEventHandler((sender, e) => WindowKeyPress(e));
+                KeyDown += new KeyEventHandler((sender, e) => WindowKeyDown(e));
+                FormClosed += new FormClosedEventHandler((sender, e) => WindowClosed(e));
             }
         }
 
+        /// <summary>
+        /// Class representing the input field for reading and displaying user input.
+        /// </summary>
         class InputField : Label
         {
+            /// <summary>
+            /// The current position of the cursor in the string.
+            /// </summary>
             int CursorIndex = 0;
+            /// <summary>
+            /// The color of the cursor.
+            /// </summary>
             readonly CSColor CursorColor;
+            /// <summary>
+            /// Whether the input field is actively capturing user input.
+            /// </summary>
             public bool Capturing = true;
 
+            /// <summary>
+            /// Handles user key press events for typing.
+            /// </summary>
+            /// <param name="e">Arguments from the key press event.</param>
             public void HandleKeyPress(KeyPressEventArgs e)
             {
                 BeginInvoke(() =>
@@ -639,6 +1048,10 @@ namespace ConsoleSharp
                 });
             }
 
+            /// <summary>
+            /// Handles user key down events for navigating the cursor.
+            /// </summary>
+            /// <param name="e">Arguments from the key down event.</param>
             public void HandleKeyDown(KeyEventArgs e)
             {
                 BeginInvoke(() =>
@@ -649,6 +1062,10 @@ namespace ConsoleSharp
                 Invalidate();
             }
 
+            /// <summary>
+            /// Updates the visual position of the cursor when the field is repainted.
+            /// </summary>
+            /// <param name="g">The graphics object of the field.</param>
             void UpdateCursor(Graphics g)
             {
                 if (Capturing)
@@ -685,6 +1102,10 @@ namespace ConsoleSharp
                 }
             }
 
+            /// <summary>
+            /// Creates a new InputField instance.
+            /// </summary>
+            /// <param name="cursorColor">The color of the cursor of the input field.</param>
             public InputField(CSColor? cursorColor = null) : base()
             {
                 CursorColor = cursorColor ?? Colors.White;
@@ -693,39 +1114,70 @@ namespace ConsoleSharp
         }
     }
 
+    /// <summary>
+    /// Provides utility methods for ConsoleSharp funtionality.
+    /// </summary>
     public static partial class Utils
     {
-        // String to int conversions for hexadecimal to decimal conversion.
+        /// <summary>
+        /// Conversions from hexadecimal conversions to their integer equivalents.
+        /// </summary>
         static readonly Dictionary<string, int> Convs = new()
         {
             {"0",0}, {"1",1}, {"2",2}, {"3",3}, {"4",4}, {"5",5}, {"6",6}, {"7",7}, {"8",8}, {"9",9}, {"a",10}, {"b",11}, {"c",12}, {"d",13}, {"e",14}, {"f",15}
         };
-
+        /// <summary>
+        /// Stores the names and corresponding data for all font families of the system.
+        /// </summary>
         static Dictionary<string, FontFamily>? Families = null;
-
+        /// <summary>
+        /// Stores the names and corresponding data for all font styles.
+        /// </summary>
         static readonly Dictionary<string, FontStyle> Styles = new()
         {
             {"Regular",FontStyle.Regular}, {"Italic",FontStyle.Italic}, {"Bold",FontStyle.Bold}, {"Strikeout",FontStyle.Strikeout}, {"Underline",FontStyle.Underline}
         };
-
+        /// <summary>
+        /// Stores the names and corresponding metadata for all typing effects.
+        /// </summary>
         static Dictionary<string, Type>? Effects = null;
 
-        // Regex's for reading of embedded styling in strings plus other utilities.
+        /// <summary>
+        /// Regex for reading RGB values from a hexadecimal code.
+        /// </summary>
+        /// <returns>The reference to the HexRegex.</returns>
         [GeneratedRegex(@"(?<r>[0-9a-f]{2})(?<g>[0-9a-f]{2})(?<b>[0-9a-f]{2})")]
         private static partial Regex HexRegex();
 
+        /// <summary>
+        /// Regex for extracting individual lines from strings with embedded styling.
+        /// </summary>
+        /// <returns>The reference to the LineRegex.</returns>
         [GeneratedRegex(@"(?:(?:\\ln(?<line>.*?)/ln)|(?<line>(?:(?:[^\\])|(?:\\(?!ln)))+))|(?<line>(?<!.)(?!.))")]
         private static partial Regex LineRegex();
 
+        /// <summary>
+        /// Regex for extracting individual text blocks and their styling parameters from strings with embedded styling.
+        /// </summary>
+        /// <returns>The reference to the TextBlockRegex.</returns>
         [GeneratedRegex(@"(?:(?:\\tb(?: *< *(?:tc: *(?:(?:(?:(?<tc_r>[0-9]{1,3})(?:, *(?<tc_g>[0-9]{1,3}))(?:, *(?<tc_b>[0-9]{1,3})))|(?<tc_hex>[0-9a-f]{6}))(?:, *(?<tc_a>[0-9]{1,3}))?)?; *)?(?:bc: *(?:(?:(?:(?<bc_r>[0-9]{1,3}), *(?<bc_g>[0-9]{1,3}), *(?<bc_b>[0-9]{1,3}))|(?<bc_hex>[0-9a-f]{6}))(?:, *(?<bc_a>[0-9]{1,3}))?)?; *)?(?:ft: *(?:(?<fam>[A-Za-z]+)?(?:(?:(?:(?<=ft: *))|(?:(?<!ft: *), *))(?<size>[0-9]+))?(?:(?:(?:(?<=ft: *))|(?:(?<!ft: *), *))\((?<style>[A-Za-z]+(?:, *[A-Za-z]+)?)\))?)?; *)?(?:ef: *(?:(?<ef_name>[A-Za-z]+)(?:, *(?<ef_param>[\w]+))?)?; *)? *>)?(?<body>.*?)/tb)|(?<body>(?:(?:[^\\])|(?:\\(?!tb)))+))|(?<body>(?<!.)(?!.))")]
         private static partial Regex TextBlockRegex();
 
+        /// <summary>
+        /// Regex for extracting inidivual font styles from the list of styles found by the TextBlockRegex in a string with embedded styling.
+        /// </summary>
+        /// <returns>The reference to the StyleRegex.</returns>
         [GeneratedRegex(@"(?<style>[A-Za-z]+)")]
         private static partial Regex StyleRegex();
 
-        public static List<TextCont> BuildFromString(string text)
+        /// <summary>
+        /// Creates a representation of a string with embedded styling using ConsoleSharp classes.
+        /// </summary>
+        /// <param name="text">The string to create a representation of.</param>
+        /// <returns>A list of Lines representing the string and its styling.</returns>
+        public static List<Line> BuildFromString(string text)
         {
-            var output = new List<TextCont>();
+            var output = new List<Line>();
             var lines = SplitToLines(text);
             foreach (var line in lines)
             {
@@ -735,6 +1187,11 @@ namespace ConsoleSharp
             return output;
         }
 
+        /// <summary>
+        /// Divides a string into substrings containing individual lines using its embedded styling.
+        /// </summary>
+        /// <param name="text">The string to be divided.</param>
+        /// <returns>A list of strings each containing one line.</returns>
         static List<string> SplitToLines(string text)
         {
             var lines = new List<string>();
@@ -751,6 +1208,11 @@ namespace ConsoleSharp
             return lines;
         }
 
+        /// <summary>
+        /// Divides a line into individual TextBlocks using its embedded styling.
+        /// </summary>
+        /// <param name="line">The line to be divided.</param>
+        /// <returns>A list of TextBlocks representing each section of styling in the string.</returns>
         static List<TextBlock> SplitToTextBlocks(string line)
         {
             var textBlocks = new List<TextBlock>();
@@ -838,6 +1300,11 @@ namespace ConsoleSharp
             return textBlocks;
         }
 
+        /// <summary>
+        /// Extracts all font styles from a string containing their embedded styling.
+        /// </summary>
+        /// <param name="text">The string to extract from.</param>
+        /// <returns>A list of all font styles found in the string.</returns>
         static List<FontStyle>? ExtractStyles(string? text)
         {
             List<FontStyle>? styles = null;
@@ -860,6 +1327,12 @@ namespace ConsoleSharp
             return styles;
         }
 
+        /// <summary>
+        /// Builds an Effect instance based on the given name and parameter.
+        /// </summary>
+        /// <param name="ef_name">The name of the effect to be built.</param>
+        /// <param name="ef_param">The parameter passed to the given effect.</param>
+        /// <returns>An instance of the defined effect.</returns>
         static Effect ExtractEffect(string? ef_name, string? ef_param)
         {
             Effect effect = new NoEffect();
@@ -879,12 +1352,19 @@ namespace ConsoleSharp
             return effect;
         }
 
+        /// <summary>
+        /// Adds a new effect subclass to the Effects dictionary.
+        /// </summary>
+        /// <param name="newEffect">The metadata of the new effect.</param>
         public static void AddEffectSubclass(Type newEffect)
         {
             if (Effects == null) InitEffectDict();
             else Effects.Add(newEffect.Name, newEffect);
         }
 
+        /// <summary>
+        /// Initializes the Effects dictionary.
+        /// </summary>
         static void InitEffectDict()
         {
             if (Effects == null)
@@ -898,11 +1378,19 @@ namespace ConsoleSharp
             }
         }
 
+        /// <summary>
+        /// Find all classes which inherit from a given class.
+        /// </summary>
+        /// <param name="baseType">The parent class.</param>
+        /// <returns>A list of the metadata of all subclasses of the parent class.</returns>
         static List<Type> GetInheritedClasses(Type baseType)
         {
             return [.. Assembly.GetAssembly(baseType).GetTypes().Where(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(baseType))];
         }
 
+        /// <summary>
+        /// Initilizes the font family dictionary.
+        /// </summary>
         static void InitFamilyDict()
         {
             if (Families == null)
@@ -915,6 +1403,11 @@ namespace ConsoleSharp
             }
         }
 
+        /// <summary>
+        /// Converts a hexadecimal code into RGB values.
+        /// </summary>
+        /// <param name="hex">The hexadecimal code to convert.</param>
+        /// <returns>The RGB values of the hexadecimal code.</returns>
         public static (int r, int g, int b) HexToRGB(string hex)
         {
             if (HexRegex().IsMatch(hex))
@@ -928,6 +1421,11 @@ namespace ConsoleSharp
             else return (-1, -1, -1);
         }
 
+        /// <summary>
+        /// Converts a number from hexadecimal notation to decimal notation.
+        /// </summary>
+        /// <param name="hex">The hexadecimal number to convert.</param>
+        /// <returns>The decimal equivalent of the hexadecimal number.</returns>
         public static int HexToDec(string hex)
         {
             var chars = ParseString(hex);
@@ -941,6 +1439,11 @@ namespace ConsoleSharp
             return dec;
         }
 
+        /// <summary>
+        /// Splits a string into its individual characters.
+        /// </summary>
+        /// <param name="input">The string to be split.</param>
+        /// <returns>A list of strings each containing a single character.</returns>
         public static List<string> ParseString(string input)
         {
             List<string> chars = new List<string>();
@@ -952,6 +1455,9 @@ namespace ConsoleSharp
         }
     }
 
+    /// <summary>
+    /// Class storing color presets - contains all presets given provided by CSS.
+    /// </summary>
     public static class Colors
     {
         public static CSColor AliceBlue { get { return _aliceBlue.Clone(); } }
