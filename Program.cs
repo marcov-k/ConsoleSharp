@@ -2,7 +2,7 @@ using ConsoleSharp;
 using static ConsoleSharp.CSDisplay;
 
 var display = new CSDisplay(dimensions: new Size(1920, 1080));
-string userInput = await display.ReadLine(prompt: @"Enter an input...", font: new CSFont(fontSize: 30));
+string userInput = await display.ReadLine(prompt: @"Enter an input...", font: new CSFont(fontSize: 40), cursorColor: Colors.Red);
 display.Print(userInput);
 
 namespace ConsoleSharp
@@ -22,40 +22,40 @@ namespace ConsoleSharp
         readonly Thread UIThread;
         static readonly List<CSDisplay> AllInstances = new List<CSDisplay>();
         public bool DoNotQuit {
-            get { return _donotquit; } 
-            set 
+            get { return _donotquit; }
+            set
             {
                 _donotquit = value;
-                if (AllInstances.Count == 0) Environment.Exit(0);
+                if (!value && AllInstances.Count == 0) Environment.Exit(0);
             }
         }
         bool _donotquit = false;
 
-        public async Task<string> ReadLine(Line prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
+        public async Task<string> ReadLine(Line prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
         {
             Print(prompt);
-            return await ReadLineImpl(textColor, bgColor, font);
+            return await ReadLineImpl(textColor, bgColor, font, cursorColor);
         }
 
-        public async Task<string> ReadLine(List<TextBlock> prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
+        public async Task<string> ReadLine(List<TextBlock> prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
         {
             Print(prompt);
-            return await ReadLineImpl(textColor, bgColor, font);
+            return await ReadLineImpl(textColor, bgColor, font, cursorColor);
         }
 
-        public async Task<string> ReadLine(TextBlock prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
+        public async Task<string> ReadLine(TextBlock prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
         {
             Print(prompt);
-            return await ReadLineImpl(textColor, bgColor, font);
+            return await ReadLineImpl(textColor, bgColor, font, cursorColor);
         }
 
-        public async Task<string> ReadLine(string prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
+        public async Task<string> ReadLine(string prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
         {
             Print(prompt);
-            return await ReadLineImpl(textColor, bgColor, font);
+            return await ReadLineImpl(textColor, bgColor, font, cursorColor);
         }
 
-        private async Task<string> ReadLineImpl(CSColor? textColor, CSColor? bgColor, CSFont? font)
+        private async Task<string> ReadLineImpl(CSColor? textColor, CSColor? bgColor, CSFont? font, CSColor? cursorColor)
         {
             textColor ??= Colors.White;
             bgColor ??= window.BGColor;
@@ -66,7 +66,7 @@ namespace ConsoleSharp
                 var prevField = window.Labels.Last();
                 pos = new Point(0, prevField.Location.Y + prevField.GetPreferredSize(new Size(prevField.Width, 0)).Height);
             }
-            var field = AddInputField(pos, textColor, bgColor, font);
+            var field = AddInputField(pos, textColor, bgColor, font, cursorColor);
             return await inputHandler.CaptureInput(field);
         }
 
@@ -170,13 +170,12 @@ namespace ConsoleSharp
             return window.Labels.Last();
         }
 
-        private InputField AddInputField(Point? pos = null, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null)
+        private InputField AddInputField(Point? pos = null, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
         {
             textColor ??= Colors.White;
             bgColor ??= Colors.Black;
             font ??= new CSFont();
-            var field = new InputField();
-            field.AutoSize = true;
+            var field = new InputField(cursorColor) { AutoSize = true };
             if (pos != null)
             {
                 field.Location = pos.Value;
@@ -224,8 +223,6 @@ namespace ConsoleSharp
 
         void KeyDown(KeyEventArgs e) { inputHandler.KeyDown(e); }
 
-        void MouseClick(MouseEventArgs e) { inputHandler.MouseClick(e); }
-
         void WindowClosed()
         {
             AllInstances.Remove(this);
@@ -250,6 +247,7 @@ namespace ConsoleSharp
                 {
                     while (Capturing) Monitor.Wait(_lock);
                 }
+                CapturingField.BeginInvoke(() => CapturingField.Capturing = false);
                 return CapturingField.Text;
             }
 
@@ -282,17 +280,6 @@ namespace ConsoleSharp
                     CapturingField?.BeginInvoke(() =>
                     {
                         CapturingField.HandleKeyDown(e);
-                    });
-                }
-            }
-
-            public void MouseClick(MouseEventArgs e)
-            {
-                if (Capturing)
-                {
-                    CapturingField?.BeginInvoke(() =>
-                    {
-                        CapturingField.HandleMouseClick(e);
                     });
                 }
             }
@@ -602,11 +589,6 @@ namespace ConsoleSharp
                 Display.KeyDown(e);
             }
 
-            void WindowMouseClick(object? sender, MouseEventArgs e)
-            {
-                Display.MouseClick(e);
-            }
-
             void WindowClosed(object? sender, FormClosedEventArgs e)
             {
                 Display.WindowClosed();
@@ -619,14 +601,15 @@ namespace ConsoleSharp
                 KeyPreview = true;
                 KeyPress += new KeyPressEventHandler(WindowKeyPress);
                 KeyDown += new KeyEventHandler(WindowKeyDown);
-                MouseClick += new MouseEventHandler(WindowMouseClick);
                 FormClosed += new FormClosedEventHandler(WindowClosed);
             }
         }
 
-        public class InputField : Label
+        class InputField : Label
         {
             int CursorIndex = 0;
+            readonly CSColor CursorColor;
+            public bool Capturing = true;
 
             public void HandleKeyPress(KeyPressEventArgs e)
             {
@@ -655,34 +638,49 @@ namespace ConsoleSharp
                     if (e.KeyCode == Keys.Left && CursorIndex > 0) CursorIndex--;
                     else if (e.KeyCode == Keys.Right && CursorIndex < Text.Length) CursorIndex++;
                 });
+                Invalidate();
             }
 
-            public void HandleMouseClick(MouseEventArgs e)
+            void UpdateCursor(Graphics g)
             {
-                var pos = e.X;
-
-                if (pos <= 0) CursorIndex = 0;
-                else if (pos >= Width) CursorIndex = Text.Length;
-                else
+                if (Capturing)
                 {
-                    var chars = Utils.ParseString(Text);
-                    var refLabel = new Label() { AutoSize = true, Font = this.Font };
-                    for (int i = 0; i < chars.Count; i++)
+                    int stringWidth = (int)Math.Round(Font.Size / 10, MidpointRounding.AwayFromZero) * 5;
+                    if (CursorIndex > 0)
                     {
-                        refLabel.Text += chars[i];
-                        var refWidth = refLabel.PreferredWidth;
-                        if (pos < refWidth)
+                        var chars = Utils.ParseString(Text);
+                        var precString = "";
+                        for (int i = 0; i < CursorIndex; i++)
                         {
-                            CursorIndex = i + 1;
-                            break;
+                            precString += chars[i];
                         }
+                        var refLabel = new Label() { AutoSize = true, Font = this.Font, Text = precString };
+                        stringWidth = refLabel.PreferredWidth;
+                    }
+
+                    int width = (int)Math.Round(Font.Size / 8, MidpointRounding.AwayFromZero);
+                    if (width < 1) width = 1;
+                    int height = (int)Math.Round(Font.Size / 8, MidpointRounding.AwayFromZero);
+                    if (height < 1) height = 1;
+                    int xPos = stringWidth - (int)Math.Round(Font.Size / 3, MidpointRounding.AwayFromZero);
+                    int yPos = (int)Math.Round(PreferredHeight * 0.73, MidpointRounding.AwayFromZero);
+
+                    var cursor = new Rectangle(xPos, yPos, width, height);
+                    using (var pen = new Pen(CursorColor.ColorData))
+                    {
+                        g.DrawRectangle(pen, cursor);
+                    }
+                    using (var brush = new SolidBrush(CursorColor.ColorData))
+                    {
+                        g.FillRectangle(brush, cursor);
                     }
                 }
             }
 
-            public InputField() : base()
+            public InputField(CSColor? cursorColor = null) : base()
             {
-                MouseClick += new MouseEventHandler((sender, e) => HandleMouseClick(e));
+                CursorColor = cursorColor ?? Colors.White;
+                Paint += new PaintEventHandler((sender, e) => UpdateCursor(e.Graphics));
             }
         }
     }
