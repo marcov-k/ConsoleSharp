@@ -3,11 +3,12 @@ using static ConsoleSharp.CSDisplay;
 
 var display = new CSDisplay(name: "ConsoleSharp Demo", dimensions: new Size(1920, 1080), bgColor: Colors.DarkRed);
 CSColor textColor = Colors.LightBlue;
-CSFont textFont = new CSFont(fontFamily: FontFamily.GenericMonospace, fontSize: 30);
+CSFont textFont = new CSFont(fontFamily: FontFamily.GenericSansSerif, fontSize: 30);
 Effect textEffect = new TypeWriter(100);
 CSColor inputColor = Colors.LightGreen;
 display.Print(new TextBlock("Hello and welcome!", textColor: textColor, font: textFont, effect: textEffect));
-string userInput = await display.ReadLine(prompt: new Line(new TextBlock("Please enter your name: ", textColor: textColor, font: textFont, effect: textEffect)), textColor: inputColor, font: textFont, cursorColor: Colors.Red);
+CSInput input = new CSInput(textColor: inputColor, font: textFont, cursorColor: Colors.Blue);
+string userInput = await display.ReadLine(prompt: new Line(new TextBlock("Please enter your name: ", textColor: textColor, font: textFont, effect: textEffect)), inputStyling: input);
 display.Print(new Line(new TextBlock($"Welcome to the game {userInput}.", textColor: textColor, font: textFont, effect: textEffect)));
 
 namespace ConsoleSharp
@@ -69,76 +70,69 @@ namespace ConsoleSharp
         /// Prints a prompt and reads the input entered by the user.
         /// </summary>
         /// <param name="prompt">A Line class representing the prompt to be printed.</param>
-        /// <param name="textColor">The text color of the input field.</param>
-        /// <param name="bgColor">The background color of the input field.</param>
-        /// <param name="font">The font data of the input field.</param>
-        /// <param name="cursorColor">The color of the cursor for the input field.</param>
+        /// <param name="inputStyling">The styling data for the input field.</param>
         /// <returns>A string containing the user input.</returns>
-        public async Task<string> ReadLine(Line prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
+        public async Task<string> ReadLine(Line prompt, CSInput? inputStyling = null)
         {
             Print(prompt);
-            return await ReadLineImpl(textColor, bgColor, font, cursorColor);
+            return await ReadLineImpl(inputStyling);
         }
 
         /// <summary>
         /// Prints a prompt and reads the input entered by the user.
         /// </summary>
         /// <param name="prompt">A list of TextBlock classes representing the prompt to be printed.</param>
-        /// <param name="textColor">The text color of the input field.</param>
-        /// <param name="bgColor">The background color of the input field.</param>
-        /// <param name="font">The font data of the input field.</param>
-        /// <param name="cursorColor">The color of the cursor for the input field.</param>
+        /// <param name="inputStyling">The styling data for the input field.</param>
         /// <returns>A string containing the user input.</returns>
-        public async Task<string> ReadLine(List<TextBlock> prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
+        public async Task<string> ReadLine(List<TextBlock> prompt, CSInput? inputStyling = null)
         {
             Print(prompt);
-            return await ReadLineImpl(textColor, bgColor, font, cursorColor);
+            return await ReadLineImpl(inputStyling);
         }
 
         /// <summary>
         /// Prints a prompt and reads the input entered by the user.
         /// </summary>
         /// <param name="prompt">A TextBlock class representing the prompt to be printed.</param>
-        /// <param name="textColor">The text color of the input field.</param>
-        /// <param name="bgColor">The background color of the input field.</param>
-        /// <param name="font">The font data of the input field.</param>
-        /// <param name="cursorColor">The color of the cursor for the input field.</param>
+        /// <param name = "inputStyling">The styling data for the input field.</param>
         /// <returns>A string containing the user input.</returns>
-        public async Task<string> ReadLine(TextBlock prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
+        public async Task<string> ReadLine(TextBlock prompt, CSInput? inputStyling = null)
         {
             Print(prompt);
-            return await ReadLineImpl(textColor, bgColor, font, cursorColor);
+            return await ReadLineImpl(inputStyling);
         }
 
         /// <summary>
         /// Prints a prompt and reads the input entered by the user.
         /// </summary>
         /// <param name="prompt">A string with optional embedded styling representing the prompt to be printed.</param>
-        /// <param name="textColor">The text color of the input field.</param>
-        /// <param name="bgColor">The background color of the input field.</param>
-        /// <param name="font">The font data of the input field.</param>
-        /// <param name="cursorColor">The color of the cursor for the input field.</param>
+        /// <param name="inputStyling">The styling data for the input field.</param>
         /// <returns>A string containing the user input.</returns>
-        public async Task<string> ReadLine(string prompt, CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
+        public async Task<string> ReadLine(string prompt, CSInput? inputStyling = null)
         {
             Print(prompt);
-            return await ReadLineImpl(textColor, bgColor, font, cursorColor);
+            return await ReadLineImpl(inputStyling);
         }
 
         /// <summary>
         /// Creates a new input field and reads the user input to from it.
         /// </summary>
-        /// <param name="textColor">The text color of the input field.</param>
-        /// <param name="bgColor">The background color of the input field.</param>
-        /// <param name="font">The font of the input field.</param>
-        /// <param name="cursorColor">The color of hte cursor of the input field.</param>
+        /// <param name="inputStyling">The styling data for the input field.</param>
         /// <returns></returns>
-        private async Task<string> ReadLineImpl(CSColor? textColor, CSColor? bgColor, CSFont? font, CSColor? cursorColor)
+        private async Task<string> ReadLineImpl(CSInput? inputStyling)
         {
             MainThread.Join(100);
-            textColor ??= Colors.White;
-            bgColor ??= window.BGColor;
-            font ??= new CSFont();
+            CSColor textColor = Colors.White;
+            CSColor bgColor = window.BGColor;
+            CSFont font = new();
+            CSColor cursorColor = Colors.White;
+            if (inputStyling != null)
+            {
+                textColor = inputStyling.TextColor ?? textColor;
+                bgColor = inputStyling.BGColor ?? bgColor;
+                font = inputStyling.Font ?? font;
+                cursorColor = inputStyling.CursorColor ?? cursorColor;
+            }
             Point? pos = null;
             if (window.Labels.Count > 0)
             {
@@ -450,6 +444,44 @@ namespace ConsoleSharp
         }
 
         /// <summary>
+        /// Class representing the styling data of a ConsoleSharp input field.
+        /// </summary>
+        public class CSInput
+        {
+            /// <summary>
+            /// The text color of the input field.
+            /// </summary>
+            public CSColor? TextColor;
+            /// <summary>
+            /// The background color of the input field.
+            /// </summary>
+            public CSColor? BGColor;
+            /// <summary>
+            /// The font of the inptu field.
+            /// </summary>
+            public CSFont? Font;
+            /// <summary>
+            /// The color of the cursor of the input field.
+            /// </summary>
+            public CSColor? CursorColor;
+
+            /// <summary>
+            /// Creates a new CSInput instance.
+            /// </summary>
+            /// <param name="textColor">The text color of the input field.</param>
+            /// <param name="bgColor">The background color of the input field.</param>
+            /// <param name="font">The font of the input field.</param>
+            /// <param name="cursorColor">The color of the cursor of the input field.</param>
+            public CSInput(CSColor? textColor = null, CSColor? bgColor = null, CSFont? font = null, CSColor? cursorColor = null)
+            {
+                TextColor = textColor;
+                BGColor = bgColor;
+                Font = font;
+                CursorColor = cursorColor;
+            }
+        }
+
+        /// <summary>
         /// Parent class for classes representing text in ConsoleSharp.
         /// </summary>
         public class TextCont
@@ -475,6 +507,7 @@ namespace ConsoleSharp
             /// List of TextBlocks which make up the line.
             /// </summary>
             public List<TextBlock> TextBlocks { get; set; } = [];
+
             /// <summary>
             /// Prints the entire text contents of the line.
             /// </summary>
@@ -503,10 +536,12 @@ namespace ConsoleSharp
                     }
                 }
             }
+
             /// <summary>
             /// Creates an empty Line instance.
             /// </summary>
             public Line() { }
+
             /// <summary>
             /// Creates a Line instance containing a single TextBlock.
             /// </summary>
@@ -515,6 +550,7 @@ namespace ConsoleSharp
             {
                 TextBlocks.Add(text);
             }
+
             /// <summary>
             /// Creates a Line instance containing multiple TextBlocks.
             /// </summary>
